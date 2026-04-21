@@ -9,10 +9,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import logging
 import random
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
+
+from app.utils.logger import setup_logging, get_logger
+
+setup_logging()
+logger = get_logger("concur.sample_data")
 
 # ---------------------------------------------------------------------------
 # Reference data
@@ -235,7 +241,7 @@ def _report_name(tx_date: date) -> str:
 # ---------------------------------------------------------------------------
 
 def generate(db_path: Path, num_reports: int = 10000) -> None:
-    print(f"Generating sample data → {db_path}")
+    logger.info("Generating sample data → %s", db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     if db_path.exists():
@@ -255,7 +261,7 @@ def generate(db_path: Path, num_reports: int = 10000) -> None:
     _seed_icw_categories(conn)
 
     # ── Employees ─────────────────────────────────────────────────────────────
-    print("  Generating employees…")
+    logger.info("  Generating employees…")
     num_employees = 500
     employees = []
     used_emails: set[str] = set()
@@ -304,10 +310,10 @@ def generate(db_path: Path, num_reports: int = 10000) -> None:
         employees,
     )
     conn.commit()
-    print(f"    {len(employees):,} employees inserted.")
+    logger.info("    %d employees inserted.", len(employees))
 
     # ── Reports & entries ─────────────────────────────────────────────────────
-    print(f"  Generating {num_reports:,} reports and entries…")
+    logger.info("  Generating %d reports and entries…", num_reports)
     emp_keys = [e[0] for e in employees]
 
     year_range = list(range(2019, date.today().year + 1))
@@ -446,14 +452,14 @@ def generate(db_path: Path, num_reports: int = 10000) -> None:
         entries_inserted += len(entry_rows)
 
         if batch_start % 5000 == 0 and batch_start > 0:
-            print(f"    {reports_inserted:,} reports / {entries_inserted:,} entries…")
+            logger.info("    %d reports / %d entries…", reports_inserted, entries_inserted)
 
     conn.commit()
-    print(f"    {reports_inserted:,} reports inserted.")
-    print(f"    {entries_inserted:,} entries inserted.")
+    logger.info("    %d reports inserted.", reports_inserted)
+    logger.info("    %d entries inserted.", entries_inserted)
 
     # ── FTS index ─────────────────────────────────────────────────────────────
-    print("  Building FTS index…")
+    logger.info("  Building FTS index…")
     from app.db.ingest import _populate_fts
     _populate_fts(conn)
 
@@ -462,10 +468,10 @@ def generate(db_path: Path, num_reports: int = 10000) -> None:
     conn.commit()
 
     size_mb = db_path.stat().st_size / 1_048_576
-    print(f"\nDone. Database: {db_path}  ({size_mb:.1f} MB)")
-    print(f"  ct_employee:     {num_employees:>8,}")
-    print(f"  ct_report:       {reports_inserted:>8,}")
-    print(f"  ct_report_entry: {entries_inserted:>8,}")
+    logger.info("Done. Database: %s  (%.1f MB)", db_path, size_mb)
+    logger.info("  ct_employee:     %8d", num_employees)
+    logger.info("  ct_report:       %8d", reports_inserted)
+    logger.info("  ct_report_entry: %8d", entries_inserted)
     conn.close()
 
 

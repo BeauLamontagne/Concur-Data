@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data          # Concur zip/dat files (read-only at runtime)
+      - ./db:/app/db              # SQLite database and receipt images
+      - ./logs:/app/logs          # Application logs
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

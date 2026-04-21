@@ -11,6 +11,7 @@ import sqlite3
 from typing import Any
 
 import pandas as pd
+import streamlit as st
 
 from app.db.connection import get_connection
 from app.db.constants import (
@@ -174,8 +175,9 @@ def _validated_group_expr(group_by: str) -> str:
 # 1. search_expenses
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=300, show_spinner=False)
 def search_expenses(
-    conn: sqlite3.Connection,
+    _conn: sqlite3.Connection,
     search_term: str = "",
     filters: ExpenseFilters | None = None,
     offset: int = 0,
@@ -187,6 +189,7 @@ def search_expenses(
     Returns (results_df, total_count). total_count excludes LIMIT/OFFSET
     and is used by the UI for pagination controls.
     """
+    conn = _conn
     filter_sql, filter_params = _build_filters(filters)
     use_fts = bool(search_term and search_term.strip())
 
@@ -240,7 +243,7 @@ def search_expenses(
     except Exception:
         if use_fts:
             # FTS syntax error — fall back to non-FTS with same filters
-            return search_expenses(conn, "", filters, offset, limit)
+            return search_expenses(_conn, "", filters, offset, limit)
         raise
 
     return df, total
@@ -250,13 +253,15 @@ def search_expenses(
 # 2. get_report_detail
 # ---------------------------------------------------------------------------
 
-def get_report_detail(conn: sqlite3.Connection, rpt_key: str) -> dict:
+@st.cache_data(ttl=300, show_spinner=False)
+def get_report_detail(_conn: sqlite3.Connection, rpt_key: str) -> dict:
     """
     Return full detail for one expense report.
 
     Keys: report, employee, entries, images.
     Returns empty dict if rpt_key not found.
     """
+    conn = _conn
     row = conn.execute(
         f"""
         SELECT
@@ -325,13 +330,15 @@ def get_report_detail(conn: sqlite3.Connection, rpt_key: str) -> dict:
 # 3. get_expense_entry_detail
 # ---------------------------------------------------------------------------
 
-def get_expense_entry_detail(conn: sqlite3.Connection, entry_key: str) -> dict:
+@st.cache_data(ttl=300, show_spinner=False)
+def get_expense_entry_detail(_conn: sqlite3.Connection, entry_key: str) -> dict:
     """
     Return full detail for a single expense line item.
 
     Keys: entry, report, employee, category.
     Returns empty dict if entry_key not found.
     """
+    conn = _conn
     row = conn.execute(
         f"""
         SELECT re.*,
@@ -400,8 +407,9 @@ def get_expense_entry_detail(conn: sqlite3.Connection, entry_key: str) -> dict:
 # 4. get_spend_summary
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_spend_summary(
-    conn: sqlite3.Connection,
+    _conn: sqlite3.Connection,
     group_by: str | list[str] = "cost_center",
     filters: ExpenseFilters | None = None,
 ) -> pd.DataFrame:
@@ -415,6 +423,7 @@ def get_spend_summary(
     Returns columns: group_value(s), total_amount, transaction_count,
                      avg_amount, report_count.
     """
+    conn = _conn
     if isinstance(group_by, str):
         group_by = [group_by]
 
@@ -443,8 +452,9 @@ def get_spend_summary(
 # 5. get_trend_data
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_trend_data(
-    conn: sqlite3.Connection,
+    _conn: sqlite3.Connection,
     group_by: str = "icw_expense_group",
     time_granularity: str = "month",
     filters: ExpenseFilters | None = None,
@@ -457,6 +467,7 @@ def get_trend_data(
 
     Returns: period, year, group_value, total_amount, transaction_count.
     """
+    conn = _conn
     if time_granularity not in ("month", "quarter"):
         raise ValueError("time_granularity must be 'month' or 'quarter'")
 
@@ -486,8 +497,9 @@ def get_trend_data(
 # 6. get_budget_comparison
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_budget_comparison(
-    conn: sqlite3.Connection,
+    _conn: sqlite3.Connection,
     dimension: str,
     dimension_value: str,
     proposed_amount: float,
@@ -503,6 +515,7 @@ def get_budget_comparison(
              year_by_year, proposed, delta_vs_avg, delta_vs_last_year,
              within_range, warning (True if >20% above historical max).
     """
+    conn = _conn
     _DIM_MAP = {
         "cost_center":          f"r.{Rpt.COST_CENTER}",
         "icw_expense_category": f"c.{Cat.CATEGORY_NAME}",
@@ -563,17 +576,19 @@ def get_budget_comparison(
 _filter_cache: dict | None = None
 
 
-def get_filter_options(conn: sqlite3.Connection | None = None) -> dict:
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_filter_options(_conn: sqlite3.Connection | None = None) -> dict:
     """
     Return distinct values for all UI filter dropdowns.
 
-    Result is cached in-process after the first call.
-    Call clear_filter_cache() after re-ingest to refresh.
+    Cached 1 hour in Streamlit's shared cache; also maintained as a module-level
+    fallback. Call clear_filter_cache() after re-ingest to refresh both.
     """
     global _filter_cache
     if _filter_cache is not None:
         return _filter_cache
 
+    conn = _conn
     if conn is None:
         conn = get_connection()
 
@@ -645,9 +660,10 @@ def get_filter_options(conn: sqlite3.Connection | None = None) -> dict:
 
 
 def clear_filter_cache() -> None:
-    """Invalidate the filter options cache (call after re-ingest)."""
+    """Invalidate both the module-level and Streamlit filter options caches."""
     global _filter_cache
     _filter_cache = None
+    get_filter_options.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -698,7 +714,7 @@ def export_to_dataframe(
     filters: ExpenseFilters | None = None,
     group_by: str = "cost_center",
     time_granularity: str = "month",
-) -> pd.DataFrame:
+) -> pd.DataFrame:  # Not cached — exports are always fresh
     """
     Non-paginated export for CSV/Excel download.
 

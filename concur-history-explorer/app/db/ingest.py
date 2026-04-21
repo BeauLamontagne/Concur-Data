@@ -17,6 +17,7 @@ import logging
 import re
 import shutil
 import sqlite3
+import warnings
 import zipfile
 from pathlib import Path
 
@@ -27,7 +28,8 @@ from app.db.constants import TBL_CATEGORIES, TBL_EMPLOYEE, TBL_ENTRY, TBL_FTS, T
 from app.db.schema import apply_schema, translate_ddl_file
 from app.utils.expense_categories import ICW_CATEGORIES
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+from app.utils.logger import setup_logging  # noqa: E402 (after stdlib imports)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 IMAGES_DIR = DB_PATH.parent / "images"
@@ -89,22 +91,29 @@ def _infer_dtype_overrides(columns: list[str]) -> dict:
     return {col: str for col in columns if _DATE_COLS_RE.search(col)}
 
 
-def _load_dat_file(dat_path: Path, conn: sqlite3.Connection) -> int:
-    table_name = dat_path.stem  # filename without extension = table name
+def _load_dat_file(dat_path: Path, conn: sqlite3.Connection) -> tuple[int, int]:
+    """Load a single .dat file. Returns (rows_loaded, bad_rows_skipped)."""
+    table_name = dat_path.stem
 
+    bad_rows = 0
     try:
-        df = pd.read_csv(
-            dat_path,
-            sep="|",
-            dtype=str,          # read everything as string first
-            keep_default_na=False,
-            on_bad_lines="warn",
-            encoding="utf-8",
-            encoding_errors="replace",
-        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            df = pd.read_csv(
+                dat_path,
+                sep="|",
+                dtype=str,
+                keep_default_na=False,
+                on_bad_lines="warn",
+                encoding="utf-8",
+                encoding_errors="replace",
+            )
+        bad_rows = sum(1 for w in caught if issubclass(w.category, Warning) and "bad lines" in str(w.message).lower())
+        if bad_rows:
+            logger.warning("  %s: skipped %d malformed row(s)", dat_path.name, bad_rows)
     except Exception as e:
         logger.error("Failed to read %s: %s", dat_path.name, e)
-        return 0
+        return 0, 0
 
     df.columns = [c.strip().upper() for c in df.columns]
 
@@ -118,10 +127,10 @@ def _load_dat_file(dat_path: Path, conn: sqlite3.Connection) -> int:
         df.to_sql(table_name, conn, if_exists="replace", index=False, chunksize=5000)
     except Exception as e:
         logger.error("Failed to insert %s (%d rows): %s", table_name, len(df), e)
-        return 0
+        return 0, bad_rows
 
     logger.info("  %-40s  %d rows", table_name, len(df))
-    return len(df)
+    return len(df), bad_rows
 
 
 def _ingest_disconnect(data_dir: Path, conn: sqlite3.Connection) -> dict[str, int]:
@@ -141,9 +150,14 @@ def _ingest_disconnect(data_dir: Path, conn: sqlite3.Connection) -> dict[str, in
     dat_files = sorted(source_dir.rglob("*.dat"))
     logger.info("Found %d .dat files", len(dat_files))
 
+    total_bad = 0
     for dat_path in dat_files:
-        n = _load_dat_file(dat_path, conn)
+        n, bad = _load_dat_file(dat_path, conn)
         counts[dat_path.stem] = n
+        total_bad += bad
+
+    if total_bad:
+        logger.warning("Total malformed rows skipped across all files: %d", total_bad)
 
     return counts
 

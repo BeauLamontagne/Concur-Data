@@ -1,9 +1,13 @@
-"""Streamlit entry point — app shell and navigation."""
+"""Streamlit entry point — app shell, auth gate, and navigation."""
 
 import streamlit as st
+from app.utils.logger import setup_logging, get_logger
 from app.db.connection import db_exists, get_connection, DB_PATH
 from app import theme
 from app.db.constants import TBL_REPORT, TBL_ENTRY, Rpe, Rpt
+
+setup_logging()
+_log = get_logger("concur.main")
 
 st.set_page_config(
     page_title="Concur History Explorer",
@@ -14,10 +18,17 @@ st.set_page_config(
 
 theme.apply_workday_theme()
 
+# ── Auth gate ─────────────────────────────────────────────────────────────────
+
+from app.pages.login import is_authenticated, render_login  # noqa: E402
+
+if not is_authenticated():
+    render_login()
+    st.stop()
+
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    # Logo / brand block
     st.markdown(
         f"""
         <div style="
@@ -83,7 +94,8 @@ with st.sidebar:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-        except Exception:
+        except Exception as exc:
+            _log.warning("Sidebar stats unavailable: %s", exc)
             st.markdown(
                 f'<div style="color:{theme.MEDIUM_GRAY};font-size:0.72rem;">Prototype v0.1</div>',
                 unsafe_allow_html=True,
@@ -94,9 +106,18 @@ with st.sidebar:
             "```\npython -m app.utils.sample_data\n```"
         )
 
+    # Sign-out
+    st.divider()
+    if st.button("Sign out", use_container_width=True):
+        st.session_state.pop("authenticated", None)
+        st.session_state.pop("_auth_token", None)
+        _log.info("User signed out")
+        st.rerun()
+
 # ── Page routing ─────────────────────────────────────────────────────────────
 
 page_key = page.split("  ", 1)[-1].strip()
+_log.info("Page rendered: %s", page_key)
 
 if page_key == "Dashboard":
     from app.pages.home import render

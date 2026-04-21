@@ -20,7 +20,7 @@ theme.apply_workday_theme()
 
 # ── Auth gate ─────────────────────────────────────────────────────────────────
 
-from app.pages.login import is_authenticated, render_login  # noqa: E402
+from app.views.login import is_authenticated, render_login  # noqa: E402
 
 if not is_authenticated():
     render_login()
@@ -120,17 +120,17 @@ page_key = page.split("  ", 1)[-1].strip()
 _log.info("Page rendered: %s", page_key)
 
 if page_key == "Dashboard":
-    from app.pages.home import render
+    from app.views.home import render
     render()
 elif page_key == "Expense Search":
-    from app.pages.audit_search import render
+    from app.views.audit_search import render
     render()
 elif page_key == "Spend Review":
-    from app.pages.spend_review import render
+    from app.views.spend_review import render
     render()
 elif page_key == "Trends & Forecasting":
-    from app.pages.trend_analysis import render
+    from app.views.trend_analysis import render
     render()
 elif page_key == "Administration":
-    from app.pages.admin import render
+    from app.views.admin import render
     render()

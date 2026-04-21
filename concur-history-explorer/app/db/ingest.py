@@ -23,11 +23,8 @@ from pathlib import Path
 import pandas as pd
 
 from app.db.connection import DB_PATH, get_connection
-from app.db.schema import (
-    ICW_CATEGORIES_DDL,
-    apply_schema,
-    translate_ddl_file,
-)
+from app.db.constants import TBL_CATEGORIES, TBL_EMPLOYEE, TBL_ENTRY, TBL_FTS, TBL_REPORT, Cat, Emp, Fts, Rpe, Rpt
+from app.db.schema import apply_schema, translate_ddl_file
 from app.utils.expense_categories import ICW_CATEGORIES
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
@@ -180,26 +177,26 @@ def _ingest_images(data_dir: Path) -> int:
 # ---------------------------------------------------------------------------
 
 def _populate_fts(conn: sqlite3.Connection) -> int:
-    conn.execute("DELETE FROM fts_expenses")
+    conn.execute(f"DELETE FROM {TBL_FTS}")
 
-    sql = """
-        INSERT INTO fts_expenses
-            (emp_key, rpt_key, rpe_key,
-             first_name, last_name,
-             rpt_name, vendor_description, description,
-             org_unit_1, org_unit_2, org_unit_3,
-             org_unit_4, org_unit_5, org_unit_6)
+    sql = f"""
+        INSERT INTO {TBL_FTS}
+            ({Fts.EMP_KEY}, {Fts.RPT_KEY}, {Fts.RPE_KEY},
+             {Fts.FIRST_NAME}, {Fts.LAST_NAME},
+             {Fts.RPT_NAME}, {Fts.VENDOR_DESC}, {Fts.DESCRIPTION},
+             {Fts.ORG_UNIT_1}, {Fts.ORG_UNIT_2}, {Fts.ORG_UNIT_3},
+             {Fts.ORG_UNIT_4}, {Fts.ORG_UNIT_5}, {Fts.ORG_UNIT_6})
         SELECT
-            e.EMP_KEY, r.RPT_KEY, re.RPE_KEY,
-            COALESCE(e.FIRST_NAME, ''), COALESCE(e.LAST_NAME, ''),
-            COALESCE(r.RPT_NAME, ''), COALESCE(re.VENDOR_DESCRIPTION, ''),
-            COALESCE(re.DESCRIPTION, ''),
-            COALESCE(re.ORG_UNIT_1, ''), COALESCE(re.ORG_UNIT_2, ''),
-            COALESCE(re.ORG_UNIT_3, ''), COALESCE(re.ORG_UNIT_4, ''),
-            COALESCE(re.ORG_UNIT_5, ''), COALESCE(re.ORG_UNIT_6, '')
-        FROM ct_report_entry re
-        JOIN ct_report r  ON re.RPT_KEY = r.RPT_KEY
-        JOIN ct_employee e ON r.EMP_KEY  = e.EMP_KEY
+            e.{Emp.KEY}, r.{Rpt.KEY}, re.{Rpe.KEY},
+            COALESCE(e.{Emp.FIRST_NAME}, ''), COALESCE(e.{Emp.LAST_NAME}, ''),
+            COALESCE(r.{Rpt.NAME}, ''), COALESCE(re.{Rpe.VENDOR_DESC}, ''),
+            COALESCE(re.{Rpe.DESCRIPTION}, ''),
+            COALESCE(re.{Rpe.ORG_UNIT_1}, ''), COALESCE(re.{Rpe.ORG_UNIT_2}, ''),
+            COALESCE(re.{Rpe.ORG_UNIT_3}, ''), COALESCE(re.{Rpe.ORG_UNIT_4}, ''),
+            COALESCE(re.{Rpe.ORG_UNIT_5}, ''), COALESCE(re.{Rpe.ORG_UNIT_6}, '')
+        FROM {TBL_ENTRY} re
+        JOIN {TBL_REPORT} r  ON re.{Rpe.RPT_KEY} = r.{Rpt.KEY}
+        JOIN {TBL_EMPLOYEE} e ON r.{Rpt.EMP_KEY}  = e.{Emp.KEY}
     """
     try:
         cur = conn.execute(sql)
@@ -215,9 +212,9 @@ def _populate_fts(conn: sqlite3.Connection) -> int:
 # ---------------------------------------------------------------------------
 
 def _seed_icw_categories(conn: sqlite3.Connection) -> None:
-    conn.execute("DELETE FROM icw_expense_categories")
+    conn.execute(f"DELETE FROM {TBL_CATEGORIES}")
     conn.executemany(
-        "INSERT INTO icw_expense_categories (group_name, category_name, description, instructions) VALUES (?,?,?,?)",
+        f"INSERT INTO {TBL_CATEGORIES} ({Cat.GROUP_NAME}, {Cat.CATEGORY_NAME}, {Cat.DESCRIPTION}, {Cat.INSTRUCTIONS}) VALUES (?,?,?,?)",
         [(r["group_name"], r["category_name"], r["description"], r["instructions"]) for r in ICW_CATEGORIES],
     )
     conn.commit()
@@ -238,13 +235,13 @@ def _print_summary(conn: sqlite3.Connection, table_counts: dict[str, int], image
         print(f"  {table:<40} {count:>10,}")
 
     # ICW categories
-    row = conn.execute("SELECT COUNT(*) FROM icw_expense_categories").fetchone()
-    print(f"  {'icw_expense_categories':<40} {row[0]:>10,}")
+    row = conn.execute(f"SELECT COUNT(*) FROM {TBL_CATEGORIES}").fetchone()
+    print(f"  {TBL_CATEGORIES:<40} {row[0]:>10,}")
 
     # FTS
     try:
-        row = conn.execute("SELECT COUNT(*) FROM fts_expenses").fetchone()
-        print(f"  {'fts_expenses (FTS index)':<40} {row[0]:>10,}")
+        row = conn.execute(f"SELECT COUNT(*) FROM {TBL_FTS}").fetchone()
+        print(f"  {TBL_FTS + ' (FTS index)':<40} {row[0]:>10,}")
     except Exception:
         pass
 

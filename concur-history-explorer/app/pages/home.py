@@ -2,6 +2,7 @@
 
 import streamlit as st
 from app.db.connection import db_exists, get_connection
+from app.db.constants import TBL_EMPLOYEE, TBL_ENTRY, TBL_REPORT, Emp, Rpe, Rpt
 from app import theme
 from app.utils.formatters import fmt_currency_compact
 
@@ -19,19 +20,19 @@ def render() -> None:
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        n = conn.execute("SELECT COUNT(*) FROM ct_employee").fetchone()[0]
+        n = conn.execute(f"SELECT COUNT(*) FROM {TBL_EMPLOYEE}").fetchone()[0]
         st.markdown(theme.metric_card_html(f"{n:,}", "Employees"), unsafe_allow_html=True)
 
     with col2:
-        n = conn.execute("SELECT COUNT(*) FROM ct_report").fetchone()[0]
+        n = conn.execute(f"SELECT COUNT(*) FROM {TBL_REPORT}").fetchone()[0]
         st.markdown(theme.metric_card_html(f"{n:,}", "Expense Reports", theme.INFO), unsafe_allow_html=True)
 
     with col3:
-        n = conn.execute("SELECT COUNT(*) FROM ct_report_entry").fetchone()[0]
+        n = conn.execute(f"SELECT COUNT(*) FROM {TBL_ENTRY}").fetchone()[0]
         st.markdown(theme.metric_card_html(f"{n:,}", "Line Items", theme.SUCCESS), unsafe_allow_html=True)
 
     with col4:
-        row = conn.execute("SELECT SUM(POSTED_AMOUNT) FROM ct_report_entry").fetchone()
+        row = conn.execute(f"SELECT SUM({Rpe.POSTED_AMOUNT}) FROM {TBL_ENTRY}").fetchone()
         total = row[0] if row and row[0] else 0
         st.markdown(theme.metric_card_html(fmt_currency_compact(total), "Total Posted", theme.WARNING), unsafe_allow_html=True)
 
@@ -40,20 +41,18 @@ def render() -> None:
 
     try:
         df = conn.execute(
-            """
-            SELECT r.RPT_ID, e.FIRST_NAME || ' ' || e.LAST_NAME AS employee,
-                   r.RPT_NAME, r.SUBMIT_DATE, r.APPROVAL_STATUS_CODE,
-                   r.TOTAL_APPROVED_AMOUNT
-            FROM ct_report r
-            JOIN ct_employee e ON r.EMP_KEY = e.EMP_KEY
-            ORDER BY r.SUBMIT_DATE DESC
+            f"""
+            SELECT r.{Rpt.RPT_ID}, e.{Emp.FIRST_NAME} || ' ' || e.{Emp.LAST_NAME} AS employee,
+                   r.{Rpt.NAME}, r.{Rpt.SUBMIT_DATE}, r.{Rpt.STATUS_CODE},
+                   r.{Rpt.TOTAL_APPROVED}
+            FROM {TBL_REPORT} r
+            JOIN {TBL_EMPLOYEE} e ON r.{Rpt.EMP_KEY} = e.{Emp.KEY}
+            ORDER BY r.{Rpt.SUBMIT_DATE} DESC
             LIMIT 20
             """
         ).fetchall()
         import pandas as pd
         if df:
-            import pandas as pd
-            import sqlite3
             rows = [dict(row) for row in df]
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         else:

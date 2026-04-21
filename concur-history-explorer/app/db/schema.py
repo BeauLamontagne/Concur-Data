@@ -8,6 +8,8 @@ import sqlite3
 import logging
 from pathlib import Path
 
+from app.db.constants import TBL_EMPLOYEE, TBL_REPORT, TBL_ENTRY, TBL_CATEGORIES, TBL_FTS, Emp, Rpt, Rpe, Fts
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -252,57 +254,61 @@ CREATE TABLE IF NOT EXISTS icw_expense_categories (
 );
 """
 
+def _idx(name: str, table: str, col: str) -> str:
+    return f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({col})"
+
+
 INDEXES_DDL = [
     # ct_employee
-    "CREATE INDEX IF NOT EXISTS idx_emp_firstname   ON ct_employee (FIRST_NAME)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_lastname    ON ct_employee (LAST_NAME)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_id          ON ct_employee (EMP_ID)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_org1        ON ct_employee (ORG_UNIT_1)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_org2        ON ct_employee (ORG_UNIT_2)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_org3        ON ct_employee (ORG_UNIT_3)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_org4        ON ct_employee (ORG_UNIT_4)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_org5        ON ct_employee (ORG_UNIT_5)",
-    "CREATE INDEX IF NOT EXISTS idx_emp_org6        ON ct_employee (ORG_UNIT_6)",
+    _idx("idx_emp_firstname",  TBL_EMPLOYEE, Emp.FIRST_NAME),
+    _idx("idx_emp_lastname",   TBL_EMPLOYEE, Emp.LAST_NAME),
+    _idx("idx_emp_id",         TBL_EMPLOYEE, Emp.ID),
+    _idx("idx_emp_org1",       TBL_EMPLOYEE, Emp.ORG_UNIT_1),
+    _idx("idx_emp_org2",       TBL_EMPLOYEE, Emp.ORG_UNIT_2),
+    _idx("idx_emp_org3",       TBL_EMPLOYEE, Emp.ORG_UNIT_3),
+    _idx("idx_emp_org4",       TBL_EMPLOYEE, Emp.ORG_UNIT_4),
+    _idx("idx_emp_org5",       TBL_EMPLOYEE, Emp.ORG_UNIT_5),
+    _idx("idx_emp_org6",       TBL_EMPLOYEE, Emp.ORG_UNIT_6),
     # ct_report
-    "CREATE INDEX IF NOT EXISTS idx_rpt_empkey      ON ct_report (EMP_KEY)",
-    "CREATE INDEX IF NOT EXISTS idx_rpt_id          ON ct_report (RPT_ID)",
-    "CREATE INDEX IF NOT EXISTS idx_rpt_submit      ON ct_report (SUBMIT_DATE)",
-    "CREATE INDEX IF NOT EXISTS idx_rpt_approval    ON ct_report (APPROVAL_STATUS_CODE)",
-    "CREATE INDEX IF NOT EXISTS idx_rpt_ledger      ON ct_report (LEDGER_KEY)",
-    "CREATE INDEX IF NOT EXISTS idx_rpt_costcenter  ON ct_report (COST_CENTER)",
+    _idx("idx_rpt_empkey",     TBL_REPORT, Rpt.EMP_KEY),
+    _idx("idx_rpt_id",         TBL_REPORT, Rpt.RPT_ID),
+    _idx("idx_rpt_submit",     TBL_REPORT, Rpt.SUBMIT_DATE),
+    _idx("idx_rpt_approval",   TBL_REPORT, Rpt.STATUS_CODE),
+    _idx("idx_rpt_ledger",     TBL_REPORT, Rpt.LEDGER_KEY),
+    _idx("idx_rpt_costcenter", TBL_REPORT, Rpt.COST_CENTER),
     # ct_report_entry
-    "CREATE INDEX IF NOT EXISTS idx_rpe_rptkey      ON ct_report_entry (RPT_KEY)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_txdate      ON ct_report_entry (TRANSACTION_DATE)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_expkey      ON ct_report_entry (EXP_KEY)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_vendor      ON ct_report_entry (VENDOR_DESCRIPTION)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_posted      ON ct_report_entry (POSTED_AMOUNT)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_claimed     ON ct_report_entry (CLAIMED_AMOUNT)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_receipt     ON ct_report_entry (RECEIPT_IMAGE_ID)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_ereceipt    ON ct_report_entry (ERECEIPT_IMAGE_ID)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_org1        ON ct_report_entry (ORG_UNIT_1)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_org2        ON ct_report_entry (ORG_UNIT_2)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_org3        ON ct_report_entry (ORG_UNIT_3)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_org4        ON ct_report_entry (ORG_UNIT_4)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_org5        ON ct_report_entry (ORG_UNIT_5)",
-    "CREATE INDEX IF NOT EXISTS idx_rpe_org6        ON ct_report_entry (ORG_UNIT_6)",
+    _idx("idx_rpe_rptkey",     TBL_ENTRY, Rpe.RPT_KEY),
+    _idx("idx_rpe_txdate",     TBL_ENTRY, Rpe.TX_DATE),
+    _idx("idx_rpe_expkey",     TBL_ENTRY, Rpe.EXP_KEY),
+    _idx("idx_rpe_vendor",     TBL_ENTRY, Rpe.VENDOR_DESC),
+    _idx("idx_rpe_posted",     TBL_ENTRY, Rpe.POSTED_AMOUNT),
+    _idx("idx_rpe_claimed",    TBL_ENTRY, Rpe.CLAIMED_AMOUNT),
+    _idx("idx_rpe_receipt",    TBL_ENTRY, Rpe.RECEIPT_IMAGE_ID),
+    _idx("idx_rpe_ereceipt",   TBL_ENTRY, Rpe.ERECEIPT_IMAGE_ID),
+    _idx("idx_rpe_org1",       TBL_ENTRY, Rpe.ORG_UNIT_1),
+    _idx("idx_rpe_org2",       TBL_ENTRY, Rpe.ORG_UNIT_2),
+    _idx("idx_rpe_org3",       TBL_ENTRY, Rpe.ORG_UNIT_3),
+    _idx("idx_rpe_org4",       TBL_ENTRY, Rpe.ORG_UNIT_4),
+    _idx("idx_rpe_org5",       TBL_ENTRY, Rpe.ORG_UNIT_5),
+    _idx("idx_rpe_org6",       TBL_ENTRY, Rpe.ORG_UNIT_6),
 ]
 
-FTS_DDL = """
-CREATE VIRTUAL TABLE IF NOT EXISTS fts_expenses USING fts5(
-    emp_key UNINDEXED,
-    rpt_key UNINDEXED,
-    rpe_key UNINDEXED,
-    first_name,
-    last_name,
-    rpt_name,
-    vendor_description,
-    description,
-    org_unit_1,
-    org_unit_2,
-    org_unit_3,
-    org_unit_4,
-    org_unit_5,
-    org_unit_6,
+FTS_DDL = f"""
+CREATE VIRTUAL TABLE IF NOT EXISTS {TBL_FTS} USING fts5(
+    {Fts.EMP_KEY} UNINDEXED,
+    {Fts.RPT_KEY} UNINDEXED,
+    {Fts.RPE_KEY} UNINDEXED,
+    {Fts.FIRST_NAME},
+    {Fts.LAST_NAME},
+    {Fts.RPT_NAME},
+    {Fts.VENDOR_DESC},
+    {Fts.DESCRIPTION},
+    {Fts.ORG_UNIT_1},
+    {Fts.ORG_UNIT_2},
+    {Fts.ORG_UNIT_3},
+    {Fts.ORG_UNIT_4},
+    {Fts.ORG_UNIT_5},
+    {Fts.ORG_UNIT_6},
     tokenize='porter unicode61'
 );
 """

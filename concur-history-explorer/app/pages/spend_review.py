@@ -234,12 +234,13 @@ def _render_chart_tab(df: pd.DataFrame, group_cols: list[str]) -> None:
         textposition="outside",
         hovertemplate="%{y}<br>$%{x:,.2f}<extra></extra>",
     ))
-    fig_bar.update_layout(
+    bar_layout = {
         **layout,
-        title_text=f"Top {len(top15)} by Spend — {_GROUP_LABELS.get(label_col, label_col)}",
-        yaxis={"autorange": "reversed", **layout.get("yaxis", {})},
-        xaxis_title="Posted Amount ($)",
-    )
+        "title_text": f"Top {len(top15)} by Spend — {_GROUP_LABELS.get(label_col, label_col)}",
+        "xaxis_title": "Posted Amount ($)",
+    }
+    bar_layout["yaxis"] = {**bar_layout.get("yaxis", {}), "autorange": "reversed"}
+    fig_bar.update_layout(**bar_layout)
     st.plotly_chart(fig_bar, use_container_width=True)
 
     # Donut chart

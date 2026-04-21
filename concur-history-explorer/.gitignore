@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv/
+venv/
+env/
+
+# SQLite database
+db/*.db
+db/*.sqlite
+db/*.sqlite3
+
+# Data files (can be large)
+data/*.zip
+data/*.dat
+data/images/
+
+# Streamlit cache
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -111,6 +111,13 @@ _FONT_STACK = (
 # ---------------------------------------------------------------------------
 
 APPROVAL_COLORS: dict[str, str] = {
+    "APPROVED":                        SUCCESS,
+    "APPROVED & IN ACCOUNTING REVIEW": PRIMARY,
+    "SENT FOR PAYMENT":                PRIMARY,
+    "PENDING APPROVAL":                WARNING,
+    "NOT SUBMITTED":                   MEDIUM_GRAY,
+    "RECALLED":                        DANGER,
+    # Legacy Concur API codes (real extract data)
     "A_APPR": SUCCESS,
     "A_PAID": SUCCESS,
     "A_EXTV": PRIMARY,
@@ -119,17 +126,6 @@ APPROVAL_COLORS: dict[str, str] = {
     "A_BACK": DANGER,
     "A_RESU": DANGER,
     "A_CANC": TEXT_MUTED,
-}
-
-APPROVAL_LABELS: dict[str, str] = {
-    "A_APPR": "Approved",
-    "A_PAID": "Paid",
-    "A_EXTV": "Sent for Payment",
-    "A_PEND": "Pending Approval",
-    "A_NOTF": "Not Submitted",
-    "A_BACK": "Sent Back",
-    "A_RESU": "Recalled",
-    "A_CANC": "Cancelled",
 }
 
 

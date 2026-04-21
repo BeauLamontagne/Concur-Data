@@ -43,7 +43,7 @@ def render() -> None:
         n = conn.execute(
             f"SELECT COUNT(DISTINCT {Emp.KEY}) FROM {TBL_EMPLOYEE} WHERE {Emp.ACTIVE} = '1'"
         ).fetchone()[0]
-        theme.styled_metric_card("Active Employees", f"{n:,}", border_color=theme.SUCCESS)
+        theme.styled_metric_card("Employees on Record", f"{n:,}", border_color=theme.SUCCESS)
 
     with c4:
         row = conn.execute(

@@ -10,20 +10,20 @@ ICW_CATEGORIES: list[dict] = [
     },
     {
         "group_name": "Agent/Insured",
-        "category_name": "Gifts – Agent/Insured",
+        "category_name": "Gifts - Agent/Insured",
         "description": "Flowers, gifts for agents and non-employees",
         "instructions": "Requires PO and PVMS for gift cards. Requires attendees listed.",
     },
     {
         "group_name": "Agent/Insured",
-        "category_name": "Meals – Agent/Insured",
+        "category_name": "Meals - Agent/Insured",
         "description": "Restaurant meals, conferences, catered events, gift baskets",
         "instructions": "Requires attendees listed on expense entry.",
     },
     # ── Business Travel Group ─────────────────────────────────────────────
     {
         "group_name": "Business Travel",
-        "category_name": "Airfare",
+        "category_name": "Air Travel - Airfare",
         "description": "Airfare, check-in fees, baggage fees",
         "instructions": "2nd checked bag allowed only if needed for business or trips 14+ days.",
     },
@@ -53,21 +53,15 @@ ICW_CATEGORIES: list[dict] = [
     },
     {
         "group_name": "Business Travel",
-        "category_name": "Meals – Travel",
+        "category_name": "Meals - Travel",
         "description": "Breakfast, lunch, dinner while traveling",
         "instructions": "$100/day allowance.",
     },
     {
         "group_name": "Business Travel",
-        "category_name": "Mileage – Entered",
+        "category_name": "Mileage - Personal Vehicle",
         "description": "Manual mileage entry",
         "instructions": "Exclude commuting miles.",
-    },
-    {
-        "group_name": "Business Travel",
-        "category_name": "Mileage – Google Maps",
-        "description": "Google Maps calculated mileage",
-        "instructions": "Enter origin/destination; round trip option available.",
     },
     {
         "group_name": "Business Travel",
@@ -96,19 +90,19 @@ ICW_CATEGORIES: list[dict] = [
     # ── Company Car Group ─────────────────────────────────────────────────
     {
         "group_name": "Company Car",
-        "category_name": "Company Car – Car Wash",
+        "category_name": "Company Car - Car Wash",
         "description": "Car wash for company vehicle",
         "instructions": "",
     },
     {
         "group_name": "Company Car",
-        "category_name": "Company Car – Expense",
+        "category_name": "Company Car - Expense",
         "description": "Tire rotation, oil changes, wipers",
         "instructions": "",
     },
     {
         "group_name": "Company Car",
-        "category_name": "Company Car – Gasoline",
+        "category_name": "Company Car - Gasoline",
         "description": "Fuel for company vehicle",
         "instructions": "",
     },
@@ -121,7 +115,7 @@ ICW_CATEGORIES: list[dict] = [
     },
     {
         "group_name": "Employee Relations",
-        "category_name": "Meals – Employee",
+        "category_name": "Meals - Employee Relations",
         "description": "Department team building meals",
         "instructions": "Requires attendees listed on expense entry.",
     },

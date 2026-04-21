@@ -25,26 +25,26 @@ logger = get_logger("concur.sample_data")
 # ---------------------------------------------------------------------------
 
 COST_CENTERS = [
-    ("CC-1001", "Marketing"),
-    ("CC-2001", "Claims"),
-    ("CC-3001", "Underwriting"),
-    ("CC-4001", "IT"),
-    ("CC-5001", "Finance"),
-    ("CC-6001", "HR"),
-    ("CC-7001", "Legal"),
-    ("CC-8001", "Operations"),
-    ("CC-9001", "Actuarial"),
-    ("CC-1101", "Commercial Lines"),
-    ("CC-1201", "Personal Lines"),
-    ("CC-1301", "Risk Management"),
-    ("CC-1401", "Compliance"),
-    ("CC-1501", "Agency Relations"),
-    ("CC-1601", "Customer Service"),
-    ("CC-1701", "Product Development"),
-    ("CC-1801", "Investments"),
-    ("CC-1901", "Reinsurance"),
-    ("CC-2101", "Executive"),
-    ("CC-2201", "Facilities"),
+    ("11001001", "Claims"),
+    ("11001002", "Claims - Auto"),
+    ("11001003", "Claims - Property"),
+    ("11002001", "Underwriting"),
+    ("11002002", "Underwriting - Commercial"),
+    ("11003001", "Marketing"),
+    ("11004001", "Information Technology"),
+    ("11004229", "IT - Infrastructure"),
+    ("11005001", "Finance"),
+    ("11005002", "Finance - Accounting"),
+    ("11006001", "Human Resources"),
+    ("11007001", "Legal"),
+    ("11007002", "Compliance"),
+    ("11008001", "Operations"),
+    ("11009001", "Actuarial"),
+    ("12001001", "Commercial Lines"),
+    ("12002001", "Personal Lines"),
+    ("12003001", "Risk Management"),
+    ("12005001", "Agency Relations"),
+    ("14001001", "Executive"),
 ]
 
 DEPARTMENTS = [
@@ -116,71 +116,69 @@ CITIES = [
 ]
 
 VENDORS = {
-    "Airfare":                ["United Airlines","Delta Air Lines","Southwest Airlines","American Airlines","Alaska Airlines"],
+    "Air Travel - Airfare":   ["United Airlines","Delta Air Lines","Southwest Airlines","American Airlines","Alaska Airlines"],
     "Hotel":                  ["Marriott","Hilton","Hyatt","Holiday Inn","Sheraton","Westin","Embassy Suites","Hampton Inn"],
-    "Meals – Travel":         ["Starbucks","Chick-fil-A","McDonald's","Chipotle","Panera Bread","Local Restaurant","Subway","The Cheesecake Factory"],
+    "Meals - Travel":         ["Starbucks","Chick-fil-A","McDonald's","Chipotle","Panera Bread","Local Restaurant","Subway","The Cheesecake Factory"],
     "Car Rental":             ["Enterprise","Hertz","Avis","National","Budget","Alamo"],
     "Bus/Taxi/Train":         ["Uber","Lyft","Yellow Cab","Amtrak","Local Taxi","Via"],
     "Parking":                ["LAZ Parking","SP+","ABM Parking","Hotel Parking","Airport Parking"],
-    "Mileage – Entered":      ["Mileage Reimbursement"],
-    "Mileage – Google Maps":  ["Mileage Reimbursement"],
+    "Mileage - Personal Vehicle": ["Mileage Reimbursement"],
     "Tips":                   ["Tip","Gratuity"],
     "Tolls":                  ["E-ZPass","SunPass","FasTrak","Toll Booth"],
     "Travel Documents":       ["CVS Health","Walgreens","Embassy Services"],
-    "Meals – Agent/Insured":  ["Morton's Steakhouse","Ruth's Chris","Capital Grille","Local Restaurant","Flemings","Nobu"],
+    "Meals - Agent/Insured":  ["Morton's Steakhouse","Ruth's Chris","Capital Grille","Local Restaurant","Flemings","Nobu"],
     "Agent/Insured Relations":["Golf Club","Event Venue","Ticketmaster","Sports Authority","Spa Resort"],
-    "Gifts – Agent/Insured":  ["Amazon","1-800-Flowers","Visa Gift Card","Nordstrom","Tiffany & Co"],
+    "Gifts - Agent/Insured":  ["Amazon","1-800-Flowers","Visa Gift Card","Nordstrom","Tiffany & Co"],
     "Corporate Marketing":    ["Convention Center","Event Management Co","Tradeshow Booth Vendor"],
     "Advertising":            ["Google Ads","LinkedIn","Local Newspaper","Promo Items Co","Signs Direct"],
     "Recruiting":             ["Indeed","LinkedIn","ZipRecruiter","Interview Space Rental"],
-    "Employee Relations":     ["Party City","Costco","Event Space","Team Building Co"],
-    "Meals – Employee":       ["Panera Bread","Chipotle","Local Deli","Catering Co","Cheesecake Factory"],
+    "Employee Relations":     ["DOLLARTREE 6626","Costco","Event Space","Team Building Co","Party City"],
+    "Meals - Employee Relations": ["Panera Bread","Chipotle","Local Deli","Catering Co","Cheesecake Factory","INSTACART","PWC"],
     "Conferences & Industry Events": ["Conference Registration","EventBrite","Industry Association"],
     "Continuing Education / Certifications": ["Coursera","CPCU Society","AICPCU","State Licensing Board"],
     "Leadership & Development Programs": ["Harvard Business Online","Dale Carnegie","Korn Ferry"],
     "Professional Skills Training": ["LinkedIn Learning","Skillsoft","Internal Training"],
-    "Company Car – Gasoline": ["Chevron","Shell","ExxonMobil","Arco","76"],
-    "Company Car – Car Wash": ["Car Wash Express","Mister Car Wash","Autobell"],
-    "Company Car – Expense":  ["Jiffy Lube","Pep Boys","Discount Tire","Firestone"],
+    "Company Car - Gasoline": ["Chevron","Shell","ExxonMobil","Arco","76"],
+    "Company Car - Car Wash": ["Car Wash Express","Mister Car Wash","Autobell"],
+    "Company Car - Expense":  ["Jiffy Lube","Pep Boys","Discount Tire","Firestone"],
     "Dues/Subscriptions":     ["CPCU Society","IIABA","Insurance Journal","LinkedIn Premium"],
     "Office Supplies":        ["Staples","Office Depot","Amazon","Grainger"],
     "Postage/Freight":        ["USPS","FedEx","UPS","DHL"],
     "Printing":               ["FedEx Office","Staples Print","Local Print Shop"],
     "Laundry":                ["Guest Laundry","Local Cleaners"],
-    "Airfare":                ["United Airlines","Delta Air Lines","Southwest Airlines","American Airlines"],
 }
 
 # (category_name, icw_group, amount_range, weight)
 EXPENSE_CATEGORIES = [
     # Business Travel ~60%
-    ("Airfare",                  "Business Travel",         (200,  1500), 12),
+    ("Air Travel - Airfare",     "Business Travel",         (200,  1500), 12),
     ("Hotel",                    "Business Travel",         (100,  400),  12),
-    ("Meals – Travel",           "Business Travel",         (15,   100),  10),
+    ("Meals - Travel",           "Business Travel",         (15,   100),  10),
     ("Car Rental",               "Business Travel",         (40,   150),  7),
     ("Bus/Taxi/Train",           "Business Travel",         (10,   80),   6),
     ("Parking",                  "Business Travel",         (5,    40),   5),
-    ("Mileage – Entered",        "Business Travel",         (10,   200),  4),
+    ("Mileage - Personal Vehicle","Business Travel",        (10,   200),  4),
     ("Tips",                     "Business Travel",         (2,    20),   2),
     ("Tolls",                    "Business Travel",         (2,    15),   2),
     # Agent/Insured ~15%
-    ("Meals – Agent/Insured",    "Agent/Insured",           (30,   200),  7),
+    ("Meals - Agent/Insured",    "Agent/Insured",           (30,   200),  7),
     ("Agent/Insured Relations",  "Agent/Insured",           (50,   500),  4),
-    ("Gifts – Agent/Insured",    "Agent/Insured",           (25,   200),  4),
+    ("Gifts - Agent/Insured",    "Agent/Insured",           (25,   200),  4),
     # Marketing ~10%
     ("Corporate Marketing",      "Marketing/Recruiting",    (100,  5000), 5),
     ("Advertising",              "Marketing/Recruiting",    (50,   2000), 3),
     ("Recruiting",               "Marketing/Recruiting",    (50,   500),  2),
     # Employee Relations ~5%
     ("Employee Relations",       "Employee Relations",      (20,   500),  3),
-    ("Meals – Employee",         "Employee Relations",      (30,   300),  2),
+    ("Meals - Employee Relations","Employee Relations",     (30,   300),  2),
     # L&D ~5%
-    ("Conferences & Industry Events",       "Learning and Development", (200, 3000), 2),
-    ("Continuing Education / Certifications","Learning and Development",(50,  1500), 2),
-    ("Professional Skills Training",        "Learning and Development", (100, 2000), 1),
+    ("Conferences & Industry Events",        "Learning and Development", (200, 3000), 2),
+    ("Continuing Education / Certifications","Learning and Development", (50,  1500), 2),
+    ("Professional Skills Training",         "Learning and Development", (100, 2000), 1),
     # Company Car ~3%
-    ("Company Car – Gasoline",   "Company Car",             (20,   80),   2),
-    ("Company Car – Car Wash",   "Company Car",             (10,   30),   1),
-    ("Company Car – Expense",    "Company Car",             (30,   500),  1),
+    ("Company Car - Gasoline",   "Company Car",             (20,   80),   2),
+    ("Company Car - Car Wash",   "Company Car",             (10,   30),   1),
+    ("Company Car - Expense",    "Company Car",             (30,   500),  1),
     # Other ~2%
     ("Dues/Subscriptions",       "Other",                   (50,   500),  1),
     ("Office Supplies",          "Other",                   (5,    100),  1),
@@ -192,11 +190,18 @@ _cat_weights = [c[3] for c in EXPENSE_CATEGORIES]
 _cat_lookup  = {c[0]: c for c in EXPENSE_CATEGORIES}
 
 APPROVAL_STATUSES = [
-    ("A_APPR", 0.80),
-    ("A_PEND", 0.05),
-    ("A_BACK", 0.05),
-    ("A_EXTV", 0.05),
-    ("A_PAID", 0.05),
+    ("Approved",                        0.60),
+    ("Approved & In Accounting Review", 0.15),
+    ("Sent for Payment",                0.10),
+    ("Pending Approval",                0.08),
+    ("Not Submitted",                   0.05),
+    ("Recalled",                        0.02),
+]
+
+PAYMENT_TYPES = [
+    ("American Express Corporate Card IBCP", 0.75),
+    ("Company Paid",                         0.15),
+    ("Out of Pocket",                        0.10),
 ]
 
 
@@ -360,6 +365,9 @@ def generate(db_path: Path, num_reports: int = 10000) -> None:
 
                 entry_date = tx_date + timedelta(days=random.randint(0, 3))
                 receipt_id = f"IMG{rpe_key_counter:08d}" if random.random() < 0.70 else None
+                payment_type = _weighted_choice(
+                    [p[0] for p in PAYMENT_TYPES], [p[1] for p in PAYMENT_TYPES]
+                )
 
                 entry_rows.append((
                     f"RPE{rpe_key_counter:09d}",  # RPE_KEY
@@ -384,7 +392,7 @@ def generate(db_path: Path, num_reports: int = 10000) -> None:
                     f"{cat_name} expense",         # DESCRIPTION
                     None,                          # VEN_LI_KEY
                     vendor,                        # VENDOR_DESCRIPTION
-                    None, None, None,              # LN_KEY, PARENT_RPE_KEY, CCT_KEY
+                    None, None, payment_type,      # LN_KEY, PARENT_RPE_KEY, CCT_KEY (payment type)
                     "FULL", "1",                   # ALLOCATION_STATE, ALLOCATION_VERSION
                     org1, None, None, None, None, None,  # ORG_UNIT_1-6
                     None, None,                    # FROM_LOCATION, TO_LOCATION

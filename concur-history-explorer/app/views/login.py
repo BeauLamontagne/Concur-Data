@@ -1,4 +1,4 @@
-"""Password gate — shown before any page renders if not authenticated."""
+"""Password gate with per-user credentials."""
 
 from __future__ import annotations
 
@@ -6,26 +6,28 @@ import streamlit as st
 
 from app import theme
 
-_FALLBACK_PASSWORD = "icw-concur-2024"
+USERS = ["Wendy", "Kim"]
+
+_FALLBACK_PASSWORDS = {
+    "wendy": "wendy-2024",
+    "kim":   "kim-2024",
+}
 
 
-def _stored_password() -> str:
+def _get_password(username: str) -> str:
     try:
-        return st.secrets["app_password"]
+        return st.secrets["users"][username.lower()]["password"]
     except Exception:
-        return _FALLBACK_PASSWORD
+        return _FALLBACK_PASSWORDS.get(username.lower(), "icw-concur-2024")
 
 
 def is_authenticated() -> bool:
-    stored = _stored_password()
-    return (
-        st.session_state.get("authenticated") is True
-        and st.session_state.get("_auth_token") == stored
-    )
+    username = st.session_state.get("username", "")
+    token    = st.session_state.get("_auth_token", "")
+    return bool(username and token and token == _get_password(username))
 
 
 def render_login() -> None:
-    """Render the login form. Caller should stop rendering the main app until this returns."""
     theme.apply_workday_theme()
 
     _, col, _ = st.columns([1, 1.4, 1])
@@ -61,10 +63,11 @@ def render_login() -> None:
         )
 
         with st.form("login_form", clear_on_submit=True):
+            username = st.selectbox("User", USERS)
             password = st.text_input(
                 "Password",
                 type="password",
-                placeholder="Enter access password",
+                placeholder="Enter your password",
                 label_visibility="collapsed",
             )
             submitted = st.form_submit_button(
@@ -72,16 +75,15 @@ def render_login() -> None:
             )
 
         if submitted:
-            stored = _stored_password()
-            if password == stored:
-                st.session_state["authenticated"] = True
-                st.session_state["_auth_token"] = stored
+            if password == _get_password(username):
+                st.session_state["username"]    = username
+                st.session_state["_auth_token"] = password
                 from app.utils.logger import get_logger
-                get_logger("concur.auth").info("Successful login")
+                get_logger("concur.auth").info("Login: %s", username)
                 st.rerun()
             else:
                 from app.utils.logger import get_logger
-                get_logger("concur.auth").warning("Failed login attempt")
+                get_logger("concur.auth").warning("Failed login attempt for: %s", username)
                 st.error("Incorrect password. Contact your Finance IT administrator.")
 
         st.markdown(

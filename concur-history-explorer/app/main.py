@@ -106,12 +106,19 @@ with st.sidebar:
             "```\npython -m app.utils.sample_data\n```"
         )
 
-    # Sign-out
+    # Signed-in user + sign-out
     st.divider()
+    username = st.session_state.get("username", "")
+    if username:
+        st.markdown(
+            f'<div style="color:{theme.MEDIUM_GRAY};font-size:0.72rem;margin-bottom:6px;">'
+            f'Signed in as <strong style="color:#fff;">{username}</strong></div>',
+            unsafe_allow_html=True,
+        )
     if st.button("Sign out", use_container_width=True):
-        st.session_state.pop("authenticated", None)
+        st.session_state.pop("username", None)
         st.session_state.pop("_auth_token", None)
-        _log.info("User signed out")
+        _log.info("User signed out: %s", username)
         st.rerun()
 
 # ── Page routing ─────────────────────────────────────────────────────────────

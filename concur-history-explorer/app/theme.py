@@ -554,4 +554,3 @@ def apply_workday_theme() -> None:
     Call once at the top of each page's render() function.
     """
     st.markdown(_WORKDAY_CSS, unsafe_allow_html=True)
-    st.sidebar.markdown(_SIDEBAR_BRAND, unsafe_allow_html=True)

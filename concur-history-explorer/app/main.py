@@ -11,26 +11,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown(theme.METRIC_CARD_CSS, unsafe_allow_html=True)
+# Inject global Workday CSS + sidebar brand block
+theme.apply_workday_theme()
 
 # ── Sidebar navigation ──────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown(
-        f"""
-        <div style="padding:1rem 0 0.5rem 0;">
-            <span style="font-size:1.4rem;font-weight:700;color:{theme.PRIMARY};">
-                💼 Concur Explorer
-            </span><br>
-            <span style="font-size:0.78rem;color:{theme.TEXT_MUTED};">
-                ICW Group — Historical Expense Data
-            </span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.divider()
-
     page = st.radio(
         "Navigate",
         options=[

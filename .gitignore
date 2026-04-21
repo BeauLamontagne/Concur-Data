@@ -2,6 +2,9 @@
 db/concur.db
 db/images/
 
+# Application logs
+logs/
+
 # Python
 __pycache__/
 *.py[cod]

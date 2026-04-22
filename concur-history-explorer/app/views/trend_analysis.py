@@ -105,16 +105,38 @@ def _render_yoy(conn, selected_years: list[str], cost_center: str) -> None:
         st.info("No data for the selected years.")
         return
 
-    combined   = pd.concat(dfs, ignore_index=True)
-    group_col  = group_by
+    combined     = pd.concat(dfs, ignore_index=True)
+    group_col    = group_by
     years_sorted = sorted(selected_years)
+
+    # Per-year totals (used for summary chart and Total row)
+    year_totals = combined.groupby("year")["total_amount"].sum().reindex(years_sorted, fill_value=0)
 
     pivot = combined.pivot_table(
         index=group_col, columns="year", values="total_amount", aggfunc="sum"
     ).reset_index().fillna(0)
 
-    # Grouped bar chart
     colors = theme.get_chart_colors()
+
+    # ── Total spend per year chart (only when filtered to a specific CC) ───────
+    if specific_cc:
+        fig_total = go.Figure(go.Bar(
+            x=years_sorted,
+            y=[year_totals[yr] for yr in years_sorted],
+            marker_color=[colors[i % len(colors)] for i in range(len(years_sorted))],
+            text=[fmt_currency_compact(year_totals[yr]) for yr in years_sorted],
+            textposition="outside",
+            hovertemplate="%{x}<br>$%{y:,.2f}<extra></extra>",
+        ))
+        fig_total.update_layout(
+            **theme.get_plotly_layout(height=280),
+            title_text=f"Total Spend — {cost_center}",
+            xaxis_title="Year",
+            yaxis_title="Posted Amount ($)",
+        )
+        st.plotly_chart(fig_total, use_container_width=True)
+
+    # Grouped bar chart by expense group / cost center
     fig = go.Figure()
     for i, yr in enumerate(years_sorted):
         if yr in pivot.columns:
@@ -126,8 +148,8 @@ def _render_yoy(conn, selected_years: list[str], cost_center: str) -> None:
                 hovertemplate=f"{yr}<br>%{{x}}<br>${{y:,.2f}}<extra></extra>",
             ))
     fig.update_layout(
-        **theme.get_plotly_layout(height=420),
-        title_text=f"Annual Spend by {_GROUP_LABELS.get(group_by, group_by)}",
+        **theme.get_plotly_layout(height=380),
+        title_text=f"Spend by {_GROUP_LABELS.get(group_by, group_by)}",
         barmode="group",
         xaxis_title=_GROUP_LABELS.get(group_by, group_by),
         yaxis_title="Posted Amount ($)",
@@ -142,21 +164,36 @@ def _render_yoy(conn, selected_years: list[str], cost_center: str) -> None:
     )
 
     delta_rows = []
+    label_col  = _GROUP_LABELS.get(group_col, group_col)
     for _, row in pivot.iterrows():
-        r: dict = {_GROUP_LABELS.get(group_col, group_col): row[group_col]}
+        r: dict = {label_col: row[group_col]}
         for yr in years_sorted:
             r[yr] = fmt_currency(row.get(yr, 0))
         if len(years_sorted) >= 2:
-            prev_yr  = years_sorted[-2]
-            curr_yr  = years_sorted[-1]
-            prev_v   = float(row.get(prev_yr, 0))
-            curr_v   = float(row.get(curr_yr, 0))
+            prev_yr    = years_sorted[-2]
+            curr_yr    = years_sorted[-1]
+            prev_v     = float(row.get(prev_yr, 0))
+            curr_v     = float(row.get(curr_yr, 0))
             dollar_chg = curr_v - prev_v
-            pct_chg  = (dollar_chg / prev_v * 100) if prev_v else 0
+            pct_chg    = (dollar_chg / prev_v * 100) if prev_v else 0
             r["$ Change (YoY)"] = fmt_currency(dollar_chg)
             r["% Change (YoY)"] = f"{pct_chg:+.1f}%"
             r["_pct_raw"] = pct_chg
         delta_rows.append(r)
+
+    # Total row
+    if len(years_sorted) >= 2:
+        total_row: dict = {label_col: "TOTAL"}
+        for yr in years_sorted:
+            total_row[yr] = fmt_currency(year_totals.get(yr, 0))
+        prev_tot   = float(year_totals.get(years_sorted[-2], 0))
+        curr_tot   = float(year_totals.get(years_sorted[-1], 0))
+        tot_chg    = curr_tot - prev_tot
+        tot_pct    = (tot_chg / prev_tot * 100) if prev_tot else 0
+        total_row["$ Change (YoY)"] = fmt_currency(tot_chg)
+        total_row["% Change (YoY)"] = f"{tot_pct:+.1f}%"
+        total_row["_pct_raw"] = tot_pct
+        delta_rows.append(total_row)
 
     if delta_rows:
         delta_df = pd.DataFrame(delta_rows)
@@ -174,11 +211,15 @@ def _render_yoy(conn, selected_years: list[str], cost_center: str) -> None:
 
         pct_col    = "% Change (YoY)"
         display_df = delta_df.drop(columns=["_pct_raw"], errors="ignore")
-        styled     = (
-            display_df.style.map(_color_pct, subset=[pct_col])
-            if pct_col in display_df.columns
-            else display_df.style
-        )
+
+        def _bold_total(row):
+            if row.get(label_col) == "TOTAL":
+                return [f"font-weight:700;border-top:2px solid {theme.LIGHT_GRAY}"] * len(row)
+            return [""] * len(row)
+
+        styled = display_df.style.apply(_bold_total, axis=1)
+        if pct_col in display_df.columns:
+            styled = styled.map(_color_pct, subset=[pct_col])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
         buf = io.BytesIO()

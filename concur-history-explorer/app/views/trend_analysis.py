@@ -120,8 +120,8 @@ def _render_yoy(conn, selected_years: list[str], group_by: str) -> None:
         barmode="group",
         xaxis_title=_GROUP_LABELS.get(group_by, group_by),
         yaxis_title="Posted Amount ($)",
-        xaxis={"tickangle": -30},
     )
+    fig.update_xaxes(tickangle=-30)
     st.plotly_chart(fig, use_container_width=True)
 
     # Delta table

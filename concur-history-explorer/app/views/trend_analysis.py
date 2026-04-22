@@ -54,7 +54,7 @@ _DIM_BUDGET = {
 def _init_state(available_years: list[str]) -> None:
     defaults: dict = {
         _SS_YEARS:     available_years[:3] if len(available_years) >= 3 else available_years,
-        _SS_GROUP:     "icw_expense_group",
+        _SS_GROUP:     "cost_center",
         _SS_DIM_TYPE:  "cost_center",
         _SS_DIM_VAL:   "",
         _SS_PROPOSED:  0.0,
@@ -164,7 +164,7 @@ def _render_yoy(conn, selected_years: list[str], group_by: str) -> None:
         pct_col    = "% Change (YoY)"
         display_df = delta_df.drop(columns=["_pct_raw"], errors="ignore")
         styled     = (
-            display_df.style.applymap(_color_pct, subset=[pct_col])
+            display_df.style.map(_color_pct, subset=[pct_col])
             if pct_col in display_df.columns
             else display_df.style
         )

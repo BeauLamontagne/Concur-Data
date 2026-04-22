@@ -59,7 +59,7 @@ def _init_state() -> None:
 
 
 def _navigate(page_label: str) -> None:
-    st.session_state["nav"] = page_label
+    st.session_state["_nav_pending"] = page_label
     st.rerun()
 
 

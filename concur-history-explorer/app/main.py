@@ -60,6 +60,10 @@ with st.sidebar:
 
     st.divider()
 
+    # Apply any pending cross-page navigation before the widget is instantiated
+    if "_nav_pending" in st.session_state:
+        st.session_state["nav"] = st.session_state.pop("_nav_pending")
+
     page = st.radio(
         "nav",
         options=[

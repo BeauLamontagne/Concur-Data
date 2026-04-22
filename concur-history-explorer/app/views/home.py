@@ -397,7 +397,7 @@ def _render_bottom(conn) -> None:
         else:
             for i, r in enumerate(recent):
                 ts = r.get("timestamp")
-                ts_str = ts.strftime("%-d %b, %-I:%M %p") if isinstance(ts, datetime) else ""
+                ts_str = ts.strftime("%d %b, %I:%M %p") if isinstance(ts, datetime) else ""
                 btn_c, meta_c = st.columns([3, 2])
                 with btn_c:
                     if st.button(

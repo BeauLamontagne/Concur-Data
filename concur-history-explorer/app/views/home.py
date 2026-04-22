@@ -334,7 +334,9 @@ def _render_task_cards(opts: dict) -> None:
                 key="sc_c2_yrb", label_visibility="collapsed",
             )
         if st.button("Compare →", key="sc_c2_go", use_container_width=True):
-            st.session_state["ta_years"] = sorted({yr_a, yr_b})
+            years = sorted({yr_a, yr_b})
+            st.session_state["ta_years"] = years
+            st.session_state["ta_yoy_params"] = {"years": years, "cc": "(All Cost Centers)"}
             _navigate("📈  Year-over-Year Comparison")
 
     # ── Card 3: Audit Lookup ───────────────────────────────────────────────────

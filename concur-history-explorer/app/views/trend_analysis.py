@@ -24,11 +24,14 @@ from app.utils.formatters import fmt_currency, fmt_currency_compact
 
 # ── Session-state keys ────────────────────────────────────────────────────────
 _SS_YEARS     = "ta_years"
-_SS_GROUP     = "ta_group"
+_SS_CC        = "ta_cost_center"
+_SS_PARAMS    = "ta_yoy_params"    # snapshotted on Generate click
 _SS_DIM_TYPE  = "ta_budget_dim_type"
 _SS_DIM_VAL   = "ta_budget_dim_val"
 _SS_PROPOSED  = "ta_proposed_amt"
 _SS_BV_RESULT = "ta_budget_result"
+
+_ALL_CC = "(All Cost Centers)"
 
 _GROUP_OPTIONS = [
     "icw_expense_group",
@@ -53,8 +56,9 @@ _DIM_BUDGET = {
 
 def _init_state(available_years: list[str]) -> None:
     defaults: dict = {
-        _SS_YEARS:     available_years[:3] if len(available_years) >= 3 else available_years,
-        _SS_GROUP:     "cost_center",
+        _SS_YEARS:     available_years[:2] if len(available_years) >= 2 else available_years,
+        _SS_CC:        _ALL_CC,
+        _SS_PARAMS:    None,
         _SS_DIM_TYPE:  "cost_center",
         _SS_DIM_VAL:   "",
         _SS_PROPOSED:  0.0,
@@ -77,14 +81,21 @@ def _available_years(opts: dict) -> list[str]:
 
 # ── YoY comparison ────────────────────────────────────────────────────────────
 
-def _render_yoy(conn, selected_years: list[str], group_by: str) -> None:
+def _render_yoy(conn, selected_years: list[str], cost_center: str) -> None:
     if len(selected_years) < 2:
         st.info("Select at least 2 years to compare.")
         return
 
+    # Auto-determine group-by: drill into expense groups for a specific CC,
+    # or compare across cost centers when viewing all
+    specific_cc = cost_center != _ALL_CC
+    group_by    = "icw_expense_group" if specific_cc else "cost_center"
+
     dfs = []
     for yr in selected_years:
         f: ExpenseFilters = {"date_start": f"{yr}-01-01", "date_end": f"{yr}-12-31"}
+        if specific_cc:
+            f["cost_center"] = cost_center
         yr_df = get_spend_summary(conn, group_by=group_by, filters=f)
         if not yr_df.empty:
             yr_df["year"] = yr
@@ -410,7 +421,7 @@ def render() -> None:
     with st.container():
         st.markdown('<div class="wd-card">', unsafe_allow_html=True)
         st.markdown('<div class="wd-card-header">Analysis Parameters</div>', unsafe_allow_html=True)
-        cc1, cc2 = st.columns(2)
+        cc1, cc2, cc3 = st.columns([2, 2, 1])
         with cc1:
             st.multiselect(
                 "Years to compare",
@@ -419,19 +430,44 @@ def render() -> None:
                 key=_SS_YEARS,
             )
         with cc2:
+            cost_centers = opts.get("cost_centers", [])
             st.selectbox(
-                "Group By",
-                _GROUP_OPTIONS,
-                format_func=_GROUP_LABELS.get,
-                key=_SS_GROUP,
+                "Cost Center",
+                [_ALL_CC] + cost_centers,
+                key=_SS_CC,
             )
+        with cc3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            generate = st.button("Generate", type="primary", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    years    = st.session_state[_SS_YEARS]
-    group_by = st.session_state[_SS_GROUP]
+    if generate:
+        years = st.session_state[_SS_YEARS]
+        if len(years) < 2:
+            st.warning("Select at least 2 years to compare.")
+        else:
+            st.session_state[_SS_PARAMS] = {
+                "years": years,
+                "cc":    st.session_state[_SS_CC],
+            }
 
-    # YoY comparison section
-    _render_yoy(conn, years, group_by)
+    params = st.session_state.get(_SS_PARAMS)
+    if not params:
+        st.markdown(
+            f'<div style="text-align:center;padding:2.5rem;color:{theme.MEDIUM_GRAY};">'
+            f'Select years and a cost center above, then click <b>Generate</b>.</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        cc_label = params["cc"]
+        if cc_label != _ALL_CC:
+            st.markdown(
+                f'<div style="color:{theme.MEDIUM_GRAY};font-size:0.8rem;margin-bottom:0.5rem;">'
+                f'Showing spend by ICW Expense Group for <strong style="color:{theme.DARK_BLUE};">'
+                f'{cc_label}</strong></div>',
+                unsafe_allow_html=True,
+            )
+        _render_yoy(conn, params["years"], params["cc"])
 
     # Budget validation section
     st.divider()

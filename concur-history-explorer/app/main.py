@@ -26,7 +26,7 @@ if not is_authenticated():
     render_login()
     st.stop()
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown(
@@ -63,13 +63,13 @@ with st.sidebar:
     page = st.radio(
         "nav",
         options=[
-            "🏠  Dashboard",
+            "🏠  Search Center",
+            "📊  Department Spend",
+            "📈  Year-over-Year Comparison",
             "📋  Expense Search",
-            "📊  Spend Review",
-            "📈  Trends & Forecasting",
-            "⚙️  Administration",
         ],
         label_visibility="collapsed",
+        key="nav",
     )
 
     st.divider()
@@ -115,29 +115,38 @@ with st.sidebar:
             f'Signed in as <strong style="color:#fff;">{username}</strong></div>',
             unsafe_allow_html=True,
         )
-    if st.button("Sign out", use_container_width=True):
+    if st.button("Sign out", use_container_width=True, key="main_signout"):
         st.session_state.pop("username", None)
         st.session_state.pop("_auth_token", None)
         _log.info("User signed out: %s", username)
         st.rerun()
 
-# ── Page routing ─────────────────────────────────────────────────────────────
+    # Administration — gear icon at bottom
+    st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
+    if st.button("⚙️  Administration", use_container_width=True, key="main_admin_btn"):
+        st.session_state["_show_admin"] = True
+        st.rerun()
+
+# ── Page routing ──────────────────────────────────────────────────────────────
+
+# Admin can be triggered from the sidebar gear button
+if st.session_state.pop("_show_admin", False):
+    from app.views.admin import render
+    render()
+    st.stop()
 
 page_key = page.split("  ", 1)[-1].strip()
 _log.info("Page rendered: %s", page_key)
 
-if page_key == "Dashboard":
+if page_key == "Search Center":
     from app.views.home import render
+    render()
+elif page_key == "Department Spend":
+    from app.views.spend_review import render
+    render()
+elif page_key == "Year-over-Year Comparison":
+    from app.views.trend_analysis import render
     render()
 elif page_key == "Expense Search":
     from app.views.audit_search import render
-    render()
-elif page_key == "Spend Review":
-    from app.views.spend_review import render
-    render()
-elif page_key == "Trends & Forecasting":
-    from app.views.trend_analysis import render
-    render()
-elif page_key == "Administration":
-    from app.views.admin import render
     render()

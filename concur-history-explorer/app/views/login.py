@@ -9,8 +9,8 @@ from app import theme
 USERS = ["Wendy", "Kim"]
 
 _FALLBACK_PASSWORDS = {
-    "wendy": "wendy-2024",
-    "kim":   "kim-2024",
+    "wendy": "wendy-1234",
+    "kim":   "kim-1234",
 }
 
 

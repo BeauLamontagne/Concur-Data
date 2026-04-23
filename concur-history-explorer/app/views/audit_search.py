@@ -475,9 +475,6 @@ def _empty_state(message: str = "No expenses found") -> None:
         <div style="text-align:center;padding:3rem 1rem;color:{theme.MEDIUM_GRAY};">
             <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔍</div>
             <div style="font-size:1.1rem;font-weight:600;color:{theme.DARK_BLUE};">{message}</div>
-            <div style="font-size:0.85rem;margin-top:0.4rem;">
-                Try a different search term or adjust your filters.
-            </div>
         </div>
         """,
         unsafe_allow_html=True,

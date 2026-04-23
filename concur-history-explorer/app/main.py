@@ -70,6 +70,7 @@ with st.sidebar:
             "⚙️  Administration",
         ],
         label_visibility="collapsed",
+        key="nav_page",
     )
 
     st.divider()
@@ -125,6 +126,26 @@ with st.sidebar:
 
 page_key = page.split("  ", 1)[-1].strip()
 _log.info("Page rendered: %s", page_key)
+
+# Reset page-specific state when the user switches pages so filters/results
+# don't carry over from a previous visit.
+_prev_page = st.session_state.get("_prev_page_key", "")
+if page_key != _prev_page:
+    _prefix_map = {
+        "Spend Review":       "sr_",
+        "Expense Search":     "as_",
+        "Trends & Forecasting": "ta_",
+    }
+    _prefix = _prefix_map.get(page_key)
+    if _prefix:
+        for _k in list(st.session_state.keys()):
+            if _k.startswith(_prefix):
+                del st.session_state[_k]
+    # Apply any search term passed from the Search Center
+    _nav_search = st.session_state.pop("_nav_search_term", None)
+    if _nav_search is not None and page_key == "Expense Search":
+        st.session_state["as_search_term"] = _nav_search
+    st.session_state["_prev_page_key"] = page_key
 
 if page_key == "Dashboard":
     from app.views.home import render

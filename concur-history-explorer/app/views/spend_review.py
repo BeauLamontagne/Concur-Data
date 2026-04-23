@@ -210,7 +210,6 @@ def _render_table_tab(df: pd.DataFrame, group_cols: list[str]) -> None:
         st.session_state[_SS_DRILL_ROW] = sel
         st.session_state["audit_prefill_group"] = st.session_state[_SS_GROUP1]
         st.session_state["audit_prefill_value"] = sel
-        st.info(f"Tip: Switch to **Audit Search** to see individual records for **{sel}**.")
 
 
 def _render_chart_tab(df: pd.DataFrame, group_cols: list[str]) -> None:
@@ -221,27 +220,7 @@ def _render_chart_tab(df: pd.DataFrame, group_cols: list[str]) -> None:
     label_col = group_cols[0]
     top15 = df.nlargest(15, "total_amount")
 
-    layout = theme.get_plotly_layout(height=420)
     colors = theme.get_chart_colors()
-
-    # Horizontal bar chart
-    fig_bar = go.Figure(go.Bar(
-        x=top15["total_amount"],
-        y=top15[label_col].astype(str),
-        orientation="h",
-        marker_color=theme.PRIMARY,
-        text=top15["total_amount"].apply(fmt_currency_compact),
-        textposition="outside",
-        hovertemplate="%{y}<br>$%{x:,.2f}<extra></extra>",
-    ))
-    bar_layout = {
-        **layout,
-        "title_text": f"Top {len(top15)} by Spend — {_GROUP_LABELS.get(label_col, label_col)}",
-        "xaxis_title": "Posted Amount ($)",
-    }
-    bar_layout["yaxis"] = {**bar_layout.get("yaxis", {}), "autorange": "reversed"}
-    fig_bar.update_layout(**bar_layout)
-    st.plotly_chart(fig_bar, use_container_width=True)
 
     # Donut chart
     c1, c2 = st.columns(2)

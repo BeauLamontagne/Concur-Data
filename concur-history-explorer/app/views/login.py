@@ -8,17 +8,14 @@ from app import theme
 
 USERS = ["Wendy", "Kim"]
 
-_FALLBACK_PASSWORDS = {
+_PASSWORDS = {
     "wendy": "wendy-1234",
     "kim":   "kim-1234",
 }
 
 
 def _get_password(username: str) -> str:
-    try:
-        return st.secrets["users"][username.lower()]["password"]
-    except Exception:
-        return _FALLBACK_PASSWORDS.get(username.lower(), "icw-concur-2024")
+    return _PASSWORDS.get(username.lower(), "")
 
 
 def is_authenticated() -> bool:

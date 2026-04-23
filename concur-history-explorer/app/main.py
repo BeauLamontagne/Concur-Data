@@ -28,6 +28,12 @@ if not is_authenticated():
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
+_NAV_OPTIONS = [
+    "📊  Department Spend",
+    "📈  Year-over-Year",
+    "🔍  Expense Search",
+]
+
 with st.sidebar:
     st.markdown(
         f"""
@@ -60,17 +66,15 @@ with st.sidebar:
 
     st.divider()
 
+    # Consume any pending nav request BEFORE the radio renders
+    _pending = st.session_state.pop("_pending_nav", None)
+    _default_idx = _NAV_OPTIONS.index(_pending) if _pending in _NAV_OPTIONS else None
+
     page = st.radio(
         "nav",
-        options=[
-            "🏠  Dashboard",
-            "📋  Expense Search",
-            "📊  Spend Review",
-            "📈  Trends & Forecasting",
-            "⚙️  Administration",
-        ],
+        options=_NAV_OPTIONS,
+        index=_default_idx,
         label_visibility="collapsed",
-        key="nav_page",
     )
 
     st.divider()
@@ -124,41 +128,37 @@ with st.sidebar:
 
 # ── Page routing ─────────────────────────────────────────────────────────────
 
-page_key = page.split("  ", 1)[-1].strip()
+page_key = page.split("  ", 1)[-1].strip() if page else "Home"
 _log.info("Page rendered: %s", page_key)
 
-# Reset page-specific state when the user switches pages so filters/results
-# don't carry over from a previous visit.
+# Clear page-specific state when switching pages so filters never carry over.
 _prev_page = st.session_state.get("_prev_page_key", "")
 if page_key != _prev_page:
     _prefix_map = {
-        "Spend Review":       "sr_",
-        "Expense Search":     "as_",
-        "Trends & Forecasting": "ta_",
+        "Department Spend": "sr_",
+        "Expense Search":   "as_",
+        "Year-over-Year":   "ta_",
     }
     _prefix = _prefix_map.get(page_key)
     if _prefix:
         for _k in list(st.session_state.keys()):
             if _k.startswith(_prefix):
                 del st.session_state[_k]
-    # Apply any search term passed from the Search Center
+    # Search term passed from the Search Center search bar
     _nav_search = st.session_state.pop("_nav_search_term", None)
     if _nav_search is not None and page_key == "Expense Search":
         st.session_state["as_search_term"] = _nav_search
     st.session_state["_prev_page_key"] = page_key
 
-if page_key == "Dashboard":
+if page_key == "Home":
     from app.views.home import render
+    render()
+elif page_key == "Department Spend":
+    from app.views.spend_review import render
+    render()
+elif page_key == "Year-over-Year":
+    from app.views.trend_analysis import render
     render()
 elif page_key == "Expense Search":
     from app.views.audit_search import render
-    render()
-elif page_key == "Spend Review":
-    from app.views.spend_review import render
-    render()
-elif page_key == "Trends & Forecasting":
-    from app.views.trend_analysis import render
-    render()
-elif page_key == "Administration":
-    from app.views.admin import render
     render()

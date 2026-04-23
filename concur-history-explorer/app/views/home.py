@@ -28,7 +28,7 @@ def render() -> None:
 
     if do_search and search_term.strip():
         st.session_state["_nav_search_term"] = search_term.strip()
-        st.session_state["nav_page"] = "📋  Expense Search"
+        st.session_state["_pending_nav"] = "🔍  Expense Search"
         st.rerun()
 
     st.divider()
@@ -37,9 +37,9 @@ def render() -> None:
     c1, c2, c3 = st.columns(3)
 
     nav_items = [
-        ("📊", "Department Spend",  "Analyze spend by cost center and department.",      "📊  Spend Review"),
-        ("📈", "Year-over-Year",    "Compare historical spend across fiscal years.",       "📈  Trends & Forecasting"),
-        ("🔍", "Expense Search",    "Search individual expense records and reports.",      "📋  Expense Search"),
+        ("📊", "Department Spend",  "Analyze spend by cost center and department.",  "📊  Department Spend"),
+        ("📈", "Year-over-Year",    "Compare historical spend across fiscal years.",  "📈  Year-over-Year"),
+        ("🔍", "Expense Search",    "Search individual expense records and reports.", "🔍  Expense Search"),
     ]
 
     for col, (icon, label, desc, target) in zip([c1, c2, c3], nav_items):
@@ -63,5 +63,5 @@ def render() -> None:
                 unsafe_allow_html=True,
             )
             if st.button("Open →", use_container_width=True, key=f"nav_{label}"):
-                st.session_state["nav_page"] = target
+                st.session_state["_pending_nav"] = target
                 st.rerun()

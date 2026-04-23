@@ -1,6 +1,5 @@
 """
-Spend Trends & Forecasting Support — Stories B2, B3.
-Multi-year trend comparison and budget validation.
+Year-over-Year Comparison and Trend Charts.
 """
 
 from __future__ import annotations
@@ -23,9 +22,11 @@ from app.db.queries import (
 from app.utils.formatters import fmt_currency, fmt_currency_compact
 
 # ── Session-state keys ────────────────────────────────────────────────────────
-_SS_YEARS = "ta_years"
-_SS_GROUP = "ta_group"
-_SS_GRAN  = "ta_granularity"
+_SS_YEARS    = "ta_years"
+_SS_GROUP    = "ta_group"
+_SS_GRAN     = "ta_granularity"
+_SS_COST_CTR = "ta_cost_center"
+_SS_RESULTS  = "ta_results"
 
 _GROUP_OPTIONS = [
     "icw_expense_group",
@@ -39,13 +40,15 @@ _GROUP_LABELS = {
 }
 
 
-def _init_state(available_years: list[str]) -> None:
-    defaults_: dict = {
-        _SS_YEARS: available_years[:3] if len(available_years) >= 3 else available_years,
-        _SS_GROUP: "icw_expense_group",
-        _SS_GRAN:  "Monthly",
+def _init_state() -> None:
+    defaults: dict = {
+        _SS_YEARS:    [],
+        _SS_GROUP:    "icw_expense_group",
+        _SS_GRAN:     "Monthly",
+        _SS_COST_CTR: "(All)",
+        _SS_RESULTS:  None,
     }
-    for k, v in defaults_.items():
+    for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
@@ -63,31 +66,32 @@ def _available_years(opts: dict) -> list[str]:
 
 # ── Tab 1: Trend charts ───────────────────────────────────────────────────────
 
-def _render_trend_tab(conn, selected_years: list[str], group_by: str, granularity: str) -> None:
-    if not selected_years:
-        st.info("Select at least one year in the controls above.")
+def _render_trend_tab(conn, years: list[str], group_by: str, granularity: str,
+                      extra_filters: ExpenseFilters) -> None:
+    if not years:
+        st.info("Select at least one year in the parameters above.")
         return
 
     gran_key = "month" if granularity == "Monthly" else "quarter"
-    all_filters: ExpenseFilters = {
-        "date_start": f"{min(selected_years)}-01-01",
-        "date_end":   f"{max(selected_years)}-12-31",
+    filters: ExpenseFilters = {
+        "date_start": f"{min(years)}-01-01",
+        "date_end":   f"{max(years)}-12-31",
+        **extra_filters,
     }
 
     with st.spinner("Loading trend data…"):
-        df = get_trend_data(conn, group_by=group_by, time_granularity=gran_key, filters=all_filters)
+        df = get_trend_data(conn, group_by=group_by, time_granularity=gran_key, filters=filters)
 
     if df.empty:
-        st.info("No data for the selected years and filters.")
+        st.info("No data for the selected parameters.")
         return
 
     df["year"] = df["year"].astype(str)
-    df = df[df["year"].isin(selected_years)]
+    df = df[df["year"].isin(years)]
 
     colors = theme.get_chart_colors()
     layout = theme.get_plotly_layout(height=420)
 
-    # Group selector when there are many distinct group values
     group_vals = sorted(df["group_value"].dropna().unique().tolist())
     if len(group_vals) > 8:
         selected_groups = st.multiselect(
@@ -101,11 +105,10 @@ def _render_trend_tab(conn, selected_years: list[str], group_by: str, granularit
         selected_groups = group_vals
 
     fig = go.Figure()
-    for i, yr in enumerate(sorted(selected_years)):
+    for i, yr in enumerate(sorted(years)):
         yr_df = df[df["year"] == yr].sort_values("period")
         if yr_df.empty:
             continue
-        # Aggregate across all group values for the overall trend line
         yr_agg = yr_df.groupby("period", as_index=False)["total_amount"].sum()
         fig.add_trace(go.Scatter(
             x=yr_agg["period"],
@@ -119,21 +122,24 @@ def _render_trend_tab(conn, selected_years: list[str], group_by: str, granularit
 
     fig.update_layout(
         **layout,
-        title_text=f"Spend by {granularity} — All Groups",
+        title_text=f"Spend by {granularity}",
         xaxis_title=granularity,
         yaxis_title="Posted Amount ($)",
         legend_title="Year",
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # Per-group small multiples (when ≤4 groups)
     if 1 < len(selected_groups) <= 4:
-        st.markdown(f'<div class="wd-section-label" style="margin-top:1rem;">By {_GROUP_LABELS.get(group_by, group_by)}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="wd-section-label" style="margin-top:1rem;">'
+            f'By {_GROUP_LABELS.get(group_by, group_by)}</div>',
+            unsafe_allow_html=True,
+        )
         cols = st.columns(min(len(selected_groups), 2))
         for gi, gval in enumerate(selected_groups):
             g_df = df[df["group_value"] == gval]
             fig_g = go.Figure()
-            for i, yr in enumerate(sorted(selected_years)):
+            for i, yr in enumerate(sorted(years)):
                 yr_g = g_df[g_df["year"] == yr].sort_values("period")
                 if yr_g.empty:
                     continue
@@ -147,7 +153,6 @@ def _render_trend_tab(conn, selected_years: list[str], group_by: str, granularit
             with cols[gi % 2]:
                 st.plotly_chart(fig_g, use_container_width=True)
 
-    # Export
     st.download_button(
         "📥 Export Trend Data (CSV)",
         data=df.to_csv(index=False).encode(),
@@ -158,14 +163,19 @@ def _render_trend_tab(conn, selected_years: list[str], group_by: str, granularit
 
 # ── Tab 2: Year-over-year comparison ─────────────────────────────────────────
 
-def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
-    if len(selected_years) < 2:
+def _render_yoy_tab(conn, years: list[str], group_by: str,
+                    extra_filters: ExpenseFilters) -> None:
+    if len(years) < 2:
         st.info("Select at least 2 years to compare.")
         return
 
     dfs = []
-    for yr in selected_years:
-        f: ExpenseFilters = {"date_start": f"{yr}-01-01", "date_end": f"{yr}-12-31"}
+    for yr in years:
+        f: ExpenseFilters = {
+            "date_start": f"{yr}-01-01",
+            "date_end":   f"{yr}-12-31",
+            **extra_filters,
+        }
         yr_df = get_spend_summary(conn, group_by=group_by, filters=f)
         if not yr_df.empty:
             yr_df["year"] = yr
@@ -181,9 +191,8 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
         index=group_col, columns="year", values="total_amount", aggfunc="sum"
     ).reset_index().fillna(0)
 
-    years_sorted = sorted(selected_years)
+    years_sorted = sorted(years)
 
-    # Grouped bar chart
     colors = theme.get_chart_colors()
     fig = go.Figure()
     for i, yr in enumerate(years_sorted):
@@ -205,8 +214,10 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # Delta table
-    st.markdown('<div class="wd-section-label" style="margin-top:1rem;">Year-over-Year Delta</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="wd-section-label" style="margin-top:1rem;">Year-over-Year Delta</div>',
+        unsafe_allow_html=True,
+    )
 
     delta_rows = []
     for _, row in pivot.iterrows():
@@ -241,14 +252,13 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
 
         pct_col = "% Change (YoY)"
         display_df = delta_df.drop(columns=["_pct_raw"], errors="ignore")
-        if pct_col in display_df.columns:
-            styled = display_df.style.applymap(_color_delta, subset=[pct_col])
-        else:
-            styled = display_df.style
-
+        styled = (
+            display_df.style.applymap(_color_delta, subset=[pct_col])
+            if pct_col in display_df.columns
+            else display_df.style
+        )
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
-        # Export
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
             display_df.to_excel(writer, sheet_name="YoY Comparison", index=False)
@@ -265,68 +275,85 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
 
 def render() -> None:
     theme.apply_workday_theme()
+    _init_state()
 
     theme.styled_header(
-        "📈 Spend Trends & Forecasting Support",
-        subtitle="Compare historical spend across years and validate budget assumptions.",
+        "📈 Year-over-Year",
+        subtitle="Compare historical spend across years by expense group, category, or department.",
     )
 
     if not db_exists():
         st.info("No database found. Run the ingest command first.")
-        st.code("python -m app.db.ingest --data-dir ./data", language="bash")
         return
 
     conn = get_connection()
     opts = get_filter_options(conn)
-
     avail_years = _available_years(opts)
-    _init_state(avail_years)
 
-    # ── Controls card ─────────────────────────────────────────────────────────
+    # ── Controls ──────────────────────────────────────────────────────────────
     with st.container():
         st.markdown('<div class="wd-card">', unsafe_allow_html=True)
-        st.markdown('<div class="wd-card-header">Analysis Parameters</div>', unsafe_allow_html=True)
+        st.markdown('<div class="wd-card-header">Parameters</div>', unsafe_allow_html=True)
 
-        cc1, cc2, cc3 = st.columns(3)
-        with cc1:
-            selected_years = st.multiselect(
+        c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
+
+        with c1:
+            st.multiselect(
                 "Years to compare",
                 avail_years,
                 default=st.session_state[_SS_YEARS],
                 key=_SS_YEARS,
             )
-        with cc2:
+        with c2:
             st.selectbox(
                 "Group By",
                 _GROUP_OPTIONS,
                 format_func=_GROUP_LABELS.get,
                 key=_SS_GROUP,
             )
-        with cc3:
-            st.radio(
-                "Time Granularity",
-                ["Monthly", "Quarterly"],
-                horizontal=True,
-                key=_SS_GRAN,
-            )
+        with c3:
+            cost_centers = ["(All)"] + opts.get("cost_centers", [])
+            st.selectbox("Cost Center", cost_centers, key=_SS_COST_CTR)
+        with c4:
+            st.markdown("<br>", unsafe_allow_html=True)
+            run = st.button("Run", type="primary", use_container_width=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.divider()
+    if run:
+        st.session_state[_SS_RESULTS] = "ready"
+        st.rerun()
 
-    tab1, tab2 = st.tabs([
-        "📈 Trend Charts",
-        "📊 Year-over-Year Comparison",
-    ])
+    if st.session_state[_SS_RESULTS] is None:
+        st.markdown(
+            f'<div style="text-align:center;padding:2.5rem;color:{theme.MEDIUM_GRAY};">'
+            f'Select years and parameters above, then click <b>Run</b>.</div>',
+            unsafe_allow_html=True,
+        )
+        conn.close()
+        return
+
+    # ── Build shared filters ──────────────────────────────────────────────────
+    cost_ctr = st.session_state[_SS_COST_CTR]
+    extra_filters: ExpenseFilters = {}
+    if cost_ctr != "(All)":
+        extra_filters["cost_center"] = cost_ctr
 
     group_by    = st.session_state[_SS_GROUP]
     granularity = st.session_state[_SS_GRAN]
     years       = st.session_state[_SS_YEARS]
 
+    st.divider()
+
+    tab1, tab2 = st.tabs(["📈 Trend Charts", "📊 Year-over-Year Comparison"])
+
     with tab1:
-        _render_trend_tab(conn, years, group_by, granularity)
+        c_gran, _ = st.columns([2, 6])
+        with c_gran:
+            st.radio("Granularity", ["Monthly", "Quarterly"], horizontal=True, key=_SS_GRAN)
+        _render_trend_tab(conn, years, group_by, st.session_state[_SS_GRAN], extra_filters)
 
     with tab2:
-        _render_yoy_tab(conn, years, group_by)
+        _render_yoy_tab(conn, years, group_by, extra_filters)
 
     conn.close()

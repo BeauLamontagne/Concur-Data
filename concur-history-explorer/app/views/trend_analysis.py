@@ -154,9 +154,23 @@ def render() -> None:
     )
     st.plotly_chart(fig, use_container_width=True)
 
+    # ── Numbers table ─────────────────────────────────────────────────────────
+    st.markdown(
+        '<div class="wd-section-label" style="margin-top:1rem;">Spend by Year — Detail</div>',
+        unsafe_allow_html=True,
+    )
+    numbers_rows = []
+    for _, row in pivot.iterrows():
+        r: dict = {"Expense Group": row[group_by]}
+        for yr in years_sorted:
+            r[yr] = fmt_currency(row.get(yr, 0))
+        numbers_rows.append(r)
+    if numbers_rows:
+        st.dataframe(pd.DataFrame(numbers_rows), use_container_width=True, hide_index=True)
+
     # ── Delta table ───────────────────────────────────────────────────────────
     st.markdown(
-        '<div class="wd-section-label" style="margin-top:1rem;">Year-over-Year Delta</div>',
+        '<div class="wd-section-label" style="margin-top:1rem;">Year-over-Year Change</div>',
         unsafe_allow_html=True,
     )
 
@@ -191,10 +205,16 @@ def render() -> None:
 
         display_df = delta_df.drop(columns=["_pct_raw"], errors="ignore")
         pct_col = "% Change (YoY)"
-        styled = (
-            display_df.style.applymap(_color_pct, subset=[pct_col])
-            if pct_col in display_df.columns else display_df.style
-        )
+        try:
+            styled = (
+                display_df.style.map(_color_pct, subset=[pct_col])
+                if pct_col in display_df.columns else display_df.style
+            )
+        except AttributeError:
+            styled = (
+                display_df.style.applymap(_color_pct, subset=[pct_col])
+                if pct_col in display_df.columns else display_df.style
+            )
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
         buf = io.BytesIO()

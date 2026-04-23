@@ -68,14 +68,24 @@ with st.sidebar:
 
     # Consume any pending nav request BEFORE the radio renders
     _pending = st.session_state.pop("_pending_nav", None)
-    _default_idx = _NAV_OPTIONS.index(_pending) if _pending in _NAV_OPTIONS else None
+    if _pending in _NAV_OPTIONS:
+        st.session_state["_current_page_idx"] = _NAV_OPTIONS.index(_pending)
+
+    # Persist the selected page across reruns (e.g. when a widget changes on the same page)
+    _current_idx = st.session_state.get("_current_page_idx", None)
 
     page = st.radio(
         "nav",
         options=_NAV_OPTIONS,
-        index=_default_idx,
+        index=_current_idx,
         label_visibility="collapsed",
     )
+
+    # Track whatever the radio is now showing
+    if page is not None:
+        st.session_state["_current_page_idx"] = _NAV_OPTIONS.index(page)
+    else:
+        st.session_state["_current_page_idx"] = None
 
     st.divider()
 
@@ -131,7 +141,8 @@ with st.sidebar:
 page_key = page.split("  ", 1)[-1].strip() if page else "Home"
 _log.info("Page rendered: %s", page_key)
 
-# Clear page-specific state when switching pages so filters never carry over.
+# When switching pages, clear the state of the page being LEFT so each
+# page always starts fresh with no carry-over from a previous visit.
 _prev_page = st.session_state.get("_prev_page_key", "")
 if page_key != _prev_page:
     _prefix_map = {
@@ -139,10 +150,10 @@ if page_key != _prev_page:
         "Expense Search":   "as_",
         "Year-over-Year":   "ta_",
     }
-    _prefix = _prefix_map.get(page_key)
-    if _prefix:
+    _leave_prefix = _prefix_map.get(_prev_page)
+    if _leave_prefix:
         for _k in list(st.session_state.keys()):
-            if _k.startswith(_prefix):
+            if _k.startswith(_leave_prefix):
                 del st.session_state[_k]
     # Search term passed from the Search Center search bar
     _nav_search = st.session_state.pop("_nav_search_term", None)

@@ -329,8 +329,8 @@ html, body, [class*="css"] {{
     display: none;
 }}
 
-/* ── Buttons ──────────────────────────────────────────────────────────────── */
-.stButton > button {{
+/* ── Buttons (primary) ────────────────────────────────────────────────────── */
+.stButton > button[kind="primary"] {{
     background-color: {PRIMARY} !important;
     color: {WHITE} !important;
     border: none !important;
@@ -341,12 +341,28 @@ html, body, [class*="css"] {{
     transition: background 0.15s, box-shadow 0.15s !important;
     box-shadow: 0 1px 3px rgba(8,117,225,0.3) !important;
 }}
-.stButton > button:hover {{
+.stButton > button[kind="primary"]:hover {{
     background-color: {MEDIUM_BLUE} !important;
     box-shadow: 0 2px 6px rgba(8,117,225,0.4) !important;
 }}
-.stButton > button:active {{
+.stButton > button[kind="primary"]:active {{
     background-color: {DARK_BLUE} !important;
+}}
+
+/* ── Buttons (secondary / inactive nav) ───────────────────────────────────── */
+.stButton > button[kind="secondary"] {{
+    background-color: {WHITE} !important;
+    color: {PRIMARY} !important;
+    border: 1.5px solid {PRIMARY} !important;
+    border-radius: 20px !important;
+    padding: 0.4rem 1.4rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    transition: background 0.15s !important;
+}}
+.stButton > button[kind="secondary"]:hover {{
+    background-color: {LIGHT_BLUE} !important;
 }}
 
 /* ── Download button ──────────────────────────────────────────────────────── */

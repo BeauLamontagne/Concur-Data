@@ -181,8 +181,44 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
         st.info("Select at least 2 years to compare.")
         return
 
+    years_sorted = sorted(selected_years)
+    colors = theme.get_chart_colors()
+
+    # ── Section 1: Total spend per year (no breakdown) ────────────────────────
+    st.markdown('<div class="wd-section-label" style="margin-bottom:0.5rem;">Total Annual Spend</div>', unsafe_allow_html=True)
+
+    totals_by_year = {}
+    for yr in years_sorted:
+        f_yr: ExpenseFilters = {"date_start": f"{yr}-01-01", "date_end": f"{yr}-12-31"}
+        yr_df = get_spend_summary(conn, group_by="cost_center", filters=f_yr)
+        totals_by_year[yr] = yr_df["total_amount"].sum() if not yr_df.empty else 0
+
+    fig_total = go.Figure(go.Bar(
+        x=list(totals_by_year.keys()),
+        y=list(totals_by_year.values()),
+        marker_color=[colors[i % len(colors)] for i in range(len(totals_by_year))],
+        text=[fmt_currency_compact(v) for v in totals_by_year.values()],
+        textposition="outside",
+        hovertemplate="%{x}<br>$%{y:,.2f}<extra></extra>",
+    ))
+    fig_total.update_layout(
+        **theme.get_plotly_layout(height=340),
+        title_text="Total Spend by Year",
+        xaxis_title="Year",
+        yaxis_title="Posted Amount ($)",
+    )
+    st.plotly_chart(fig_total, use_container_width=True)
+
+    # ── Section 2: Breakdown by category ─────────────────────────────────────
+    st.divider()
+    st.markdown(
+        f'<div class="wd-section-label" style="margin-bottom:0.5rem;">'
+        f'Breakdown by {_GROUP_LABELS.get(group_by, group_by)}</div>',
+        unsafe_allow_html=True,
+    )
+
     dfs = []
-    for yr in selected_years:
+    for yr in years_sorted:
         f: ExpenseFilters = {"date_start": f"{yr}-01-01", "date_end": f"{yr}-12-31"}
         yr_df = get_spend_summary(conn, group_by=group_by, filters=f)
         if not yr_df.empty:
@@ -190,7 +226,7 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
             dfs.append(yr_df)
 
     if not dfs:
-        st.info("No data for the selected years.")
+        st.info("No breakdown data for the selected years.")
         return
 
     combined = pd.concat(dfs, ignore_index=True)
@@ -199,10 +235,6 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
         index=group_col, columns="year", values="total_amount", aggfunc="sum"
     ).reset_index().fillna(0)
 
-    years_sorted = sorted(selected_years)
-
-    # Grouped bar chart
-    colors = theme.get_chart_colors()
     fig = go.Figure()
     for i, yr in enumerate(years_sorted):
         if yr in pivot.columns:
@@ -214,7 +246,7 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
                 hovertemplate=f"{yr}<br>%{{x}}<br>${{y:,.2f}}<extra></extra>",
             ))
     fig.update_layout(
-        **theme.get_plotly_layout(height=400),
+        **theme.get_plotly_layout(height=420),
         title_text=f"Annual Spend by {_GROUP_LABELS.get(group_by, group_by)}",
         barmode="group",
         xaxis_title=_GROUP_LABELS.get(group_by, group_by),
@@ -269,6 +301,9 @@ def _render_yoy_tab(conn, selected_years: list[str], group_by: str) -> None:
         # Export
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
+            pd.DataFrame({"Year": list(totals_by_year.keys()), "Total Spend": list(totals_by_year.values())}).to_excel(
+                writer, sheet_name="Total by Year", index=False
+            )
             display_df.to_excel(writer, sheet_name="YoY Comparison", index=False)
             combined.to_excel(writer, sheet_name="Raw Data", index=False)
         st.download_button(

@@ -55,9 +55,10 @@ def _init_state() -> None:
 def _render_filter_panel(opts: dict) -> ExpenseFilters:
     current: dict = st.session_state[_SS_FILTERS]
 
-    with st.expander("🔽  Filters", expanded=bool(current)):
-        st.markdown('<div class="wd-filter-panel">', unsafe_allow_html=True)
+    st.markdown('<div class="wd-filter-panel">', unsafe_allow_html=True)
+    st.markdown('<div class="wd-section-label">Filters</div>', unsafe_allow_html=True)
 
+    with st.container():
         c1, c2, c3 = st.columns(3)
 
         with c1:
@@ -153,7 +154,7 @@ def _render_filter_panel(opts: dict) -> ExpenseFilters:
         with btn_col2:
             clear = st.button("Clear All", key="btn_clear")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Build filters dict from widget state
     filters: ExpenseFilters = {}

@@ -2,9 +2,8 @@
 
 import streamlit as st
 from app.utils.logger import setup_logging, get_logger
-from app.db.connection import db_exists, get_connection, DB_PATH
+from app.db.connection import db_exists, get_connection
 from app import theme
-from app.db.constants import TBL_REPORT, TBL_ENTRY, Rpe, Rpt
 
 setup_logging()
 _log = get_logger("concur.main")
@@ -13,131 +12,75 @@ st.set_page_config(
     page_title="Concur History Explorer",
     page_icon="💼",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 theme.apply_workday_theme()
 
-# ── Auth gate ─────────────────────────────────────────────────────────────────
-
+# ── Auth gate ──────────────────────────────────────────────────────────────────
 from app.views.login import is_authenticated, render_login  # noqa: E402
 
 if not is_authenticated():
     render_login()
     st.stop()
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
+# ── Initialize page state (always Dashboard on fresh login) ───────────────────
+if "page" not in st.session_state:
+    st.session_state["page"] = "Dashboard"
 
-with st.sidebar:
+# ── Top navigation bar ─────────────────────────────────────────────────────────
+_PAGES = ["Dashboard", "Dept Spend", "Year-over-Year", "Expense Search"]
+_PAGE_LABELS = {
+    "Dashboard":      "🏠  Dashboard",
+    "Dept Spend":     "📊  Dept Spend",
+    "Year-over-Year": "📈  Year-over-Year",
+    "Expense Search": "🔍  Expense Search",
+}
+
+cur_page = st.session_state["page"]
+
+brand_col, nav1, nav2, nav3, nav4, spacer, signout_col = st.columns([3, 1, 1, 1, 1, 1, 1])
+
+with brand_col:
     st.markdown(
-        f"""
-        <div style="
-            background:{theme.PRIMARY};
-            border-radius:6px;
-            padding:10px 14px;
-            margin-bottom:10px;
-            text-align:center;
-            font-size:0.95rem;
-            font-weight:800;
-            letter-spacing:1.5px;
-            color:#fff;
-        ">ICW GROUP</div>
-        <div style="
-            color:#fff;
-            font-size:1.05rem;
-            font-weight:700;
-            line-height:1.25;
-            margin-bottom:3px;
-        ">Concur History Explorer</div>
-        <div style="
-            color:{theme.MEDIUM_GRAY};
-            font-size:0.75rem;
-            margin-bottom:12px;
-        ">Historical Expense Data Archive</div>
-        """,
+        f'<div style="padding-top:6px;line-height:1.2;">'
+        f'<span style="font-weight:800;font-size:0.95rem;color:{theme.DARK_BLUE};'
+        f'letter-spacing:1px;">ICW GROUP</span>'
+        f'<span style="color:{theme.MEDIUM_GRAY};font-size:0.8rem;"> · Concur History Explorer</span>'
+        f'</div>',
         unsafe_allow_html=True,
     )
 
-    st.divider()
+for col, key in zip([nav1, nav2, nav3, nav4], _PAGES):
+    with col:
+        btn_type = "primary" if cur_page == key else "secondary"
+        if st.button(_PAGE_LABELS[key], use_container_width=True, type=btn_type, key=f"nav_{key}"):
+            st.session_state["page"] = key
+            st.rerun()
 
-    page = st.radio(
-        "nav",
-        options=[
-            "🏠  Dashboard",
-            "📋  Expense Search",
-            "📊  Spend Review",
-            "📈  Trends & Forecasting",
-            "⚙️  Administration",
-        ],
-        label_visibility="collapsed",
-    )
-
-    st.divider()
-
-    # DB stats footer
-    if db_exists():
-        try:
-            conn = get_connection()
-            n_reports = conn.execute(f"SELECT COUNT(*) FROM {TBL_REPORT}").fetchone()[0]
-            n_entries = conn.execute(f"SELECT COUNT(*) FROM {TBL_ENTRY}").fetchone()[0]
-            row = conn.execute(
-                f"SELECT MIN({Rpe.TX_DATE}), MAX({Rpe.TX_DATE}) FROM {TBL_ENTRY}"
-            ).fetchone()
-            yr_min = (row[0] or "")[:4]
-            yr_max = (row[1] or "")[:4]
-            conn.close()
-            st.markdown(
-                f'<div style="color:{theme.MEDIUM_GRAY};font-size:0.72rem;line-height:1.6;">'
-                f'{n_reports:,} reports &nbsp;·&nbsp; {n_entries:,} entries<br>'
-                f'{yr_min}–{yr_max}<br>'
-                f'Prototype v0.1'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        except Exception as exc:
-            _log.warning("Sidebar stats unavailable: %s", exc)
-            st.markdown(
-                f'<div style="color:{theme.MEDIUM_GRAY};font-size:0.72rem;">Prototype v0.1</div>',
-                unsafe_allow_html=True,
-            )
-    else:
-        st.warning(
-            "No database found.\n\nRun ingest or generate sample data:\n"
-            "```\npython -m app.utils.sample_data\n```"
-        )
-
-    # Signed-in user + sign-out
-    st.divider()
+with signout_col:
     username = st.session_state.get("username", "")
-    if username:
-        st.markdown(
-            f'<div style="color:{theme.MEDIUM_GRAY};font-size:0.72rem;margin-bottom:6px;">'
-            f'Signed in as <strong style="color:#fff;">{username}</strong></div>',
-            unsafe_allow_html=True,
-        )
-    if st.button("Sign out", use_container_width=True):
-        st.session_state.pop("username", None)
-        st.session_state.pop("_auth_token", None)
+    if st.button("Sign Out", use_container_width=True, key="nav_signout"):
+        for k in ["username", "_auth_token", "page"]:
+            st.session_state.pop(k, None)
         _log.info("User signed out: %s", username)
         st.rerun()
 
-# ── Page routing ─────────────────────────────────────────────────────────────
+st.divider()
 
-page_key = page.split("  ", 1)[-1].strip()
-_log.info("Page rendered: %s", page_key)
+# ── Page routing ───────────────────────────────────────────────────────────────
+page = st.session_state["page"]
+_log.info("Page rendered: %s", page)
 
-if page_key == "Dashboard":
+if page == "Dashboard":
     from app.views.home import render
     render()
-elif page_key == "Expense Search":
+elif page == "Expense Search":
     from app.views.audit_search import render
     render()
-elif page_key == "Spend Review":
+elif page == "Dept Spend":
     from app.views.spend_review import render
     render()
-elif page_key == "Trends & Forecasting":
+elif page == "Year-over-Year":
     from app.views.trend_analysis import render
-    render()
-elif page_key == "Administration":
-    from app.views.admin import render
     render()

@@ -63,10 +63,9 @@ with st.sidebar:
     page = st.radio(
         "nav",
         options=[
-            "🏠  Dashboard",
-            "📋  Expense Search",
-            "📊  Spend Review",
-            "📈  Trends & Forecasting",
+            "🔍  General Search",
+            "📊  Dept Spend",
+            "📈  Year-over-Year",
             "⚙️  Administration",
         ],
         label_visibility="collapsed",
@@ -126,16 +125,13 @@ with st.sidebar:
 page_key = page.split("  ", 1)[-1].strip()
 _log.info("Page rendered: %s", page_key)
 
-if page_key == "Dashboard":
-    from app.views.home import render
-    render()
-elif page_key == "Expense Search":
+if page_key == "General Search":
     from app.views.audit_search import render
     render()
-elif page_key == "Spend Review":
+elif page_key == "Dept Spend":
     from app.views.spend_review import render
     render()
-elif page_key == "Trends & Forecasting":
+elif page_key == "Year-over-Year":
     from app.views.trend_analysis import render
     render()
 elif page_key == "Administration":

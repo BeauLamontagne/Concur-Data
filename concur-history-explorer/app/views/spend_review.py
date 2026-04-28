@@ -13,9 +13,11 @@ from app.db.queries import ExpenseFilters, get_filter_options, get_spend_summary
 from app.utils.formatters import fmt_currency, fmt_currency_compact
 
 # Session-state keys
-_SS_YEAR    = "sr_year"
-_SS_GROUP1  = "sr_group1"
-_SS_RESULTS = "sr_results"
+_SS_YEAR     = "sr_year"
+_SS_GROUP1   = "sr_group1"
+_SS_COST_CTR = "sr_cost_center"
+_SS_RESULTS  = "sr_results"
+_SS_PARAMS   = "sr_params"
 
 _GROUP_OPTIONS = [
     "cost_center",
@@ -35,26 +37,32 @@ _FISCAL_YEARS = [str(y) for y in range(date.today().year, 2017, -1)]
 
 def _init_state() -> None:
     defaults: dict = {
-        _SS_YEAR:    str(date.today().year - 1),
-        _SS_GROUP1:  "cost_center",
-        _SS_RESULTS: None,
+        _SS_YEAR:     str(date.today().year - 1),
+        _SS_GROUP1:   "cost_center",
+        _SS_COST_CTR: "(All)",
+        _SS_RESULTS:  None,
+        _SS_PARAMS:   None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
 
-def _render_controls() -> bool:
+def _render_controls(opts: dict) -> bool:
     """Render parameter controls. Returns True when Generate is clicked."""
     st.markdown('<div class="wd-card">', unsafe_allow_html=True)
     st.markdown('<div class="wd-card-header">Report Parameters</div>', unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns([2, 3, 1])
+    c1, c2, c3, c4 = st.columns([2, 2, 3, 1])
 
     with c1:
         st.selectbox("Fiscal Year", _FISCAL_YEARS, key=_SS_YEAR)
 
     with c2:
+        cost_centers = ["(All)"] + opts.get("cost_centers", [])
+        st.selectbox("Cost Center", cost_centers, key=_SS_COST_CTR)
+
+    with c3:
         st.selectbox(
             "Group By",
             _GROUP_OPTIONS,
@@ -62,7 +70,7 @@ def _render_controls() -> bool:
             key=_SS_GROUP1,
         )
 
-    with c3:
+    with c4:
         st.markdown("<br>", unsafe_allow_html=True)
         generate = st.button("Generate Report", type="primary", use_container_width=True)
 
@@ -97,7 +105,7 @@ def render() -> None:
 
     theme.styled_header(
         "Dept Spend",
-        subtitle="Select a fiscal year and grouping, then click Generate Report.",
+        subtitle="Select a fiscal year, optional cost center, and grouping — then click Generate Report.",
     )
 
     if not db_exists():
@@ -106,27 +114,38 @@ def render() -> None:
         return
 
     conn = get_connection()
+    opts = get_filter_options(conn)
 
-    generate = _render_controls()
+    generate = _render_controls(opts)
 
     if generate:
+        st.session_state[_SS_PARAMS] = {
+            "year":        st.session_state[_SS_YEAR],
+            "cost_center": st.session_state[_SS_COST_CTR],
+            "group_by":    st.session_state[_SS_GROUP1],
+        }
         st.session_state[_SS_RESULTS] = "pending"
 
     if st.session_state[_SS_RESULTS] is None:
         st.markdown(
             f'<div style="text-align:center;padding:2.5rem;color:{theme.MEDIUM_GRAY};">'
-            f'Select a year and grouping above, then click <b>Generate Report</b>.</div>',
+            f'Select parameters above and click <b>Generate Report</b>.</div>',
             unsafe_allow_html=True,
         )
         conn.close()
         return
 
-    year    = st.session_state[_SS_YEAR]
-    group1  = st.session_state[_SS_GROUP1]
+    params = st.session_state[_SS_PARAMS]
+    year   = params["year"]
+    cc     = params["cost_center"]
+    group1 = params["group_by"]
+
     filters: ExpenseFilters = {
         "date_start": f"{year}-01-01",
         "date_end":   f"{year}-12-31",
     }
+    if cc and cc != "(All)":
+        filters["cost_center"] = cc
 
     with st.spinner("Generating report…"):
         df = get_spend_summary(conn, group_by=group1, filters=filters)
@@ -134,7 +153,7 @@ def render() -> None:
     st.session_state[_SS_RESULTS] = "done"
 
     if df.empty:
-        st.warning("No data found for the selected year.")
+        st.warning("No data found for the selected parameters.")
         conn.close()
         return
 

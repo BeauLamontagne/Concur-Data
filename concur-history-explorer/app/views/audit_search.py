@@ -283,16 +283,22 @@ def render() -> None:
 
     all_statuses = opts.get("approval_statuses", [])
 
+    # Handle pending clear BEFORE widgets are instantiated
+    if st.session_state.pop("gs_clear_pending", False):
+        for k in [_W_KEYWORD, _W_EMPLOYEE, _W_COST_CTR, _W_STATUS, _W_DATE_START, _W_DATE_END]:
+            st.session_state.pop(k, None)   # deleted keys re-init from _init_state defaults
+        st.session_state[_SS_SUBMITTED] = False
+        st.session_state[_SS_PARAMS]    = None
+        st.session_state[_SS_PAGE]      = 0
+        st.session_state[_SS_RPT_KEY]   = None
+        st.session_state[_SS_RPE_KEY]   = None
+        st.session_state[_SS_DETAIL]    = False
+        _init_state(min_d, max_d)
+
     search_clicked, clear_clicked = _render_filters(opts, min_d, max_d)
 
     if clear_clicked:
-        for k, v in {
-            _W_KEYWORD: "", _W_DATE_START: min_d, _W_DATE_END: max_d,
-            _W_COST_CTR: "(All)", _W_EMPLOYEE: "", _W_STATUS: "(All)",
-            _SS_SUBMITTED: False, _SS_PARAMS: None, _SS_PAGE: 0,
-            _SS_RPT_KEY: None, _SS_RPE_KEY: None, _SS_DETAIL: False,
-        }.items():
-            st.session_state[k] = v
+        st.session_state["gs_clear_pending"] = True
         st.rerun()
 
     if search_clicked:
@@ -336,9 +342,22 @@ def render() -> None:
     if total == 0:
         st.info("No results found. Try adjusting your filters.")
     else:
+        # Load full result set for total amount + CSV (cached)
+        exp_df = export_to_dataframe(conn, "search", filters or None)
+        total_amount = exp_df["Posted Amount"].sum() if "Posted Amount" in exp_df.columns else 0
+
+        # Summary bar
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            theme.styled_metric_card("Matching Transactions", f"{total:,}")
+        with sc2:
+            from app.utils.formatters import fmt_currency_compact
+            theme.styled_metric_card("Total Posted Amount", fmt_currency_compact(total_amount),
+                                     border_color=theme.MEDIUM_BLUE)
+
+        st.divider()
         _render_results(df, total)
         st.divider()
-        exp_df = export_to_dataframe(conn, "search", filters or None)
         st.download_button(
             "📥 Export Results (CSV)",
             data=exp_df.to_csv(index=False).encode(),
